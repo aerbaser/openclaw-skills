@@ -1,0 +1,41 @@
+name: Skill Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python syntax check
+        run: |
+          find . -name "*.py" -not -path "*/__pycache__/*" | while read f; do
+            python3 -m py_compile "$f" && echo "OK: $f" || exit 1
+          done
+
+      - name: Check no .bak files committed
+        run: |
+          if find . -name "*.bak.*" | grep -q .; then
+            echo "ERROR: .bak files should not be committed"
+            find . -name "*.bak.*"
+            exit 1
+          fi
+          echo "OK: no .bak files"
+
+      - name: Check SKILL.md exists in each skill dir
+        run: |
+          missing=0
+          for dir in */; do
+            if [ -d "$dir" ] && [ "$dir" != ".github/" ]; then
+              if [ ! -f "${dir}SKILL.md" ]; then
+                echo "WARN: missing SKILL.md in $dir"
+                missing=$((missing+1))
+              fi
+            fi
+          done
+          echo "Checked. Missing SKILL.md: $missing"
