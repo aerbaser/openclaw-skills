@@ -29,13 +29,16 @@ Check status: `systemctl --user status codex-proxy gpt-researcher`
 ## Quick Research (single report)
 
 ```bash
-# Basic research report
 curl -s -X POST http://127.0.0.1:8000/report/ \
   -H "Content-Type: application/json" \
   -d '{
     "task": "Your research query here",
     "report_type": "research_report",
-    "agent": "researcher"
+    "report_source": "web",
+    "tone": "Objective",
+    "repo_name": "",
+    "branch_name": "",
+    "generate_in_background": false
   }' | python3 -m json.tool
 ```
 
@@ -43,12 +46,17 @@ curl -s -X POST http://127.0.0.1:8000/report/ \
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `task` | string | required | Research query/topic |
-| `report_type` | string | `research_report` | Type: `research_report`, `detailed_report`, `resource_report`, `outline_report`, `subtopic_report`, `multi_agents` |
-| `agent` | string | `researcher` | Agent type |
-| `report_source` | string | `web` | Source: `web` or `local` (local docs) |
+| `task` | string | **required** | Research query/topic |
+| `report_type` | string | `research_report` | See Report Types below |
+| `report_source` | string | **required** | `web` or `local` (local docs) |
+| `tone` | string | **required** | `Objective`, `Formal`, `Analytical`, `Persuasive`, `Informative`, `Explanatory` (capital first letter!) |
+| `repo_name` | string | **required** | GitHub repo (empty string `""` for web research) |
+| `branch_name` | string | **required** | Git branch (empty string `""` for web research) |
+| `generate_in_background` | bool | `true` | **Set to `false`** for synchronous response! |
 | `source_urls` | list | `[]` | Specific URLs to research |
-| `generate_in_background` | bool | `false` | Background generation |
+| `headers` | dict | `null` | Custom HTTP headers |
+
+**⚠️ IMPORTANT:** `generate_in_background` defaults to `true`. Always set it to `false` for synchronous API calls.
 
 ### Report Types
 
@@ -124,14 +132,18 @@ curl -s http://127.0.0.1:8000/api/reports/$RESEARCH_ID | python3 -m json.tool
 
 ```json
 {
-  "output": "# Research Report\n\n## Introduction\n...",
   "research_id": "task_1710000000_your_query",
-  "sources": ["https://source1.com", "https://source2.com"],
-  "costs": 0.0
+  "research_information": {
+    "source_urls": ["https://source1.com", "https://source2.com"]
+  },
+  "report": "# Research Report\n\n## Introduction\n...",
+  "docx_path": "outputs/task_xxx.docx",
+  "pdf_path": "outputs/task_xxx.pdf"
 }
 ```
 
-The `output` field contains the full markdown report with inline citations.
+The `report` field contains the full markdown report with inline citations.
+Reports are also saved as .docx/.pdf in the `outputs/` directory.
 
 ## Troubleshooting
 
