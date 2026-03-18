@@ -1,64 +1,77 @@
+
 ---
 name: github-repo-steward
-description: Audit, classify, and clean up a messy GitHub portfolio. Use when repositories are duplicated, empty, abandoned, fork-heavy, undocumented, or inconsistent, and you need a repeatable inventory, scoring model, cleanup plan, and optional archive/delete apply path.
+description: Use when repositories are duplicated, abandoned, undocumented, fork-heavy, empty, or inconsistent and you need a repeatable GitHub cleanup plan with inventory, classification, archive/delete candidates, and managed-repo hardening priorities.
 license: MIT
-compatibility: openclaw; gh and python3 recommended; best with authenticated GitHub CLI access.
+compatibility: openclaw; best with authenticated GitHub CLI access to the target user or organization.
 metadata:
   author: OpenAI
-  version: "3.0.0"
+  version: "4.0.0"
   tags:
     - github
+    - governance
     - portfolio
     - cleanup
-    - governance
     - repo-hygiene
 ---
 
 # GitHub Repo Steward
 
-Use this skill when the problem is the portfolio, not one repo.
+Use this skill when the problem is the portfolio, not one repository.
 
-## Read first
+## Trigger phrases
+
+Activate when the user asks to:
+
+- clean up GitHub repos
+- audit all repos in an account or org
+- classify forks / templates / archives / empties
+- identify archive / delete candidates
+- create a recurring repo hygiene process
+- turn GitHub chaos into a governed portfolio
+
+## Read this first
+
+Always read:
 
 - `{baseDir}/references/PORTFOLIO_TAXONOMY.md`
-- `{baseDir}/references/ARCHIVE_POLICY.md`
 - `{baseDir}/references/REPO_BASELINE.md`
-
-Read when setting org-wide defaults:
-- `{baseDir}/references/ORG_DOT_GITHUB_BASELINE.md`
-
-Read when defining recurring governance:
+- `{baseDir}/references/ARCHIVE_POLICY.md`
 - `{baseDir}/references/REVIEW_CADENCE.md`
 
-## Operating mode
+Read this when org-wide defaults matter:
 
-Default: audit only.
+- `{baseDir}/references/ORG_DOT_GITHUB_BASELINE.md`
 
-Apply mode exists, but destructive actions stay off unless explicitly requested.
+## Default mode
+
+Default to **audit mode** first.
+
+Do not archive, delete, rename, transfer, or change visibility without explicit user approval.
 
 ## Workflow
 
-### 1) Build inventory
+### 1) Build the inventory
 
-Personal account:
-```bash
-python3 {baseDir}/scripts/repo_inventory.py --owner YOUR_HANDLE --format markdown --out /tmp/repo_inventory.json
-```
-
-Org:
-```bash
-python3 {baseDir}/scripts/repo_inventory.py --owner YOUR_ORG --format markdown --out /tmp/repo_inventory.json
-```
-
-### 2) Score and classify
+Organization / user explicitly given:
 
 ```bash
-python3 {baseDir}/scripts/repo_score.py --inventory /tmp/repo_inventory.json --format markdown --out /tmp/repo_plan.csv
+python3 {baseDir}/scripts/repo_inventory.py --owner my-org --output /tmp/repos.json --format pretty
 ```
 
-### 3) Review the plan
+Authenticated viewer by default:
 
-Every repo must end up in one class:
+```bash
+python3 {baseDir}/scripts/repo_inventory.py --output /tmp/repos.json --format pretty
+```
+
+### 2) Score and classify everything
+
+```bash
+python3 {baseDir}/scripts/repo_score.py --inventory /tmp/repos.json --output /tmp/repo-score.json --format pretty
+```
+
+Every repo must end up in exactly one class:
 - managed
 - template
 - fork
@@ -66,39 +79,64 @@ Every repo must end up in one class:
 - archive
 - parking
 
-Every repo must have one recommended action:
-- keep_managed
-- harden_baseline
-- convert_to_template
-- keep_fork
-- archive_candidate
-- delete_candidate
-- promote_or_retire
+No `misc`.
+No `other`.
+No “unclear” bucket left unresolved.
 
-### 4) Optional apply
+### 3) Produce a phased action plan
 
-Archive only:
+For each repo recommend one primary action:
+- keep as managed
+- keep and harden baseline
+- convert to template
+- keep as intentional fork
+- archive candidate
+- delete candidate
+
+### 4) Separate safe from destructive
+
+Safe:
+- classification
+- baseline recommendations
+- missing `.github` defaults
+- hardening priorities
+
+Approval-required:
+- archive
+- delete
+- rename
+- transfer
+- visibility change
+
+### 5) Apply only when explicitly approved
+
+Dry-run or command preview:
+
 ```bash
-python3 {baseDir}/scripts/apply_repo_actions.py --plan /tmp/repo_plan.csv --apply-archive
+python3 {baseDir}/scripts/repo_apply.py --score-file /tmp/repo-score.json --archive-candidates
 ```
 
-Archive and delete:
+Actual apply:
+
 ```bash
-python3 {baseDir}/scripts/apply_repo_actions.py --plan /tmp/repo_plan.csv --apply-archive --apply-delete
+python3 {baseDir}/scripts/repo_apply.py --score-file /tmp/repo-score.json --archive-candidates --apply
+python3 {baseDir}/scripts/repo_apply.py --score-file /tmp/repo-score.json --delete-candidates --apply
 ```
 
 ## Required output
 
+Every audit run must end with:
 - portfolio summary
 - repo-by-repo classification
-- obvious archive candidates
-- obvious delete candidates
-- top managed repos to harden first
-- missing org baseline items
+- top archive candidates
+- top delete candidates
+- top hardening candidates
+- missing shared baseline items
+- next 10 actions in order
 
 ## Non-negotiables
 
-- No repo left as “misc”.
+- No repo left unclassified.
 - No delete in implicit mode.
-- No archive of repos with clear current value without saying why.
-- No portfolio cleanup without a written plan.
+- No archive without a stated reason.
+- No cleanup without a written plan.

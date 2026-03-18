@@ -1,19 +1,59 @@
+
 # Portfolio Taxonomy
 
+Use one class per repository.
+
 ## managed
-Live repo. Must have real owner, README, CI, and active purpose.
+Live repository where agents may open PRs.
+
+Signals:
+- active product or service
+- non-trivial code
+- should have README, CI, owners, and review rules
 
 ## template
-Canonical starter repo. Used to spawn other repos.
+Repository intentionally used to generate new repos.
+
+Signals:
+- template flag set
+- name / topics mention template, starter, boilerplate, scaffold
+- low direct feature churn, high reuse intent
 
 ## fork
-Intentional third-party fork with retained strategic value.
+Third-party fork kept intentionally.
+
+Signals:
+- `isFork`
+- maybe used as patch fork, mirror, or vendor fork
 
 ## lab
-Experiment or prototype. Time-boxed and non-canonical.
+Experiment, prototype, spike, playground, throwaway.
+
+Signals:
+- names like `lab`, `playground`, `poc`, `spike`, `scratch`, `demo`, `sandbox`
+- narrow purpose
+- low or temporary value
 
 ## archive
-Historical repo. Read-only, documented as retired.
+Historical read-only repo.
+
+Signals:
+- already archived
+- explicitly retained for history or reference
 
 ## parking
-Empty, unclear, or underdefined repo. Either promote or retire quickly.
+Placeholder, empty repo, abandoned shell, or unclear leftover.
+
+Signals:
+- empty or near-empty
+- no meaningful docs
+- no recent activity
+- no clear role
+
+## Forbidden class names
+Do not use:
+- misc
+- other
+- unknown
+
+If a repo feels ambiguous, gather more signals and force a decision.

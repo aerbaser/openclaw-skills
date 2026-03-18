@@ -1,17 +1,15 @@
-# Org `.github` Baseline
 
-Use a public `.github` repository for default community-health files.
+# Shared `.github` Baseline
 
-Suggested contents:
-- `CONTRIBUTING.md`
-- `CODE_OF_CONDUCT.md`
-- `SUPPORT.md`
-- `.github/ISSUE_TEMPLATE/`
-- `.github/PULL_REQUEST_TEMPLATE.md`
+A serious portfolio should have a public `.github` repo providing shared defaults.
 
-Why:
-- default files apply to repos that do not define their own versions
-- this keeps the portfolio consistent without copying boilerplate everywhere
+Baseline contents:
+- CONTRIBUTING.md
+- CODE_OF_CONDUCT.md
+- SUPPORT.md
+- SECURITY.md
+- issue forms or templates
+- PR template
 
-Exception:
-- if a repo has its own custom issue template folder, GitHub will use the repo-local templates instead of the defaults
+Repo-local overrides should be rare and justified.
+Shared defaults reduce entropy across the portfolio.

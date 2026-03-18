@@ -1,11 +1,12 @@
+
 ---
 name: github-issue-forge
-description: Draft or rewrite GitHub issues from real repository analysis. Use when creating feature, bug, refactor, migration, CI, or tech-debt issues that an implementation agent should be able to execute directly without guessing scope, code paths, constraints, or verification commands.
+description: Use when drafting or rewriting GitHub issues from real repository analysis so an implementation agent can execute directly without guessing scope, code paths, constraints, tests, or verification commands.
 license: MIT
-compatibility: openclaw; gh, git, python3 recommended; works best inside a checked-out repository with local read access and optional GitHub CLI auth for issue/PR overlap search.
+compatibility: openclaw; works best inside a checked-out repository with optional GitHub CLI auth for issue and PR overlap search.
 metadata:
   author: OpenAI
-  version: "3.1.0"
+  version: "4.0.0"
   tags:
     - github
     - issues
@@ -16,161 +17,160 @@ metadata:
 
 # GitHub Issue Forge
 
-Create GitHub issues that are good enough for a coding agent to execute directly —
-not just good enough for a human to "understand later."
+Create issues that are executable, not aspirational.
 
-## Read first
+## Trigger phrases
 
-Before drafting the issue, read:
+Activate when the user asks to:
+
+- create a GitHub issue
+- rewrite a vague issue
+- turn repo analysis into an issue
+- split work into agent-ready tasks
+- de-duplicate or scope issues
+- prepare bug / feature / refactor / migration / CI / tech-debt tasks for downstream execution
+
+## Read this first
+
+Always read:
+
 - `{baseDir}/references/ISSUE_BODY_TEMPLATE.md`
 - `{baseDir}/references/ISSUE_QUALITY_RUBRIC.md`
+- `{baseDir}/references/SPLIT_DECISION_GUIDE.md`
+
+Read this when searching overlap:
+
 - `{baseDir}/references/SEARCH_PATTERNS.md`
 
----
+## Workflow
 
-## Core workflow
+### 1) Scan the real repo first
 
-### 1. Scan the repository first
-
-```bash
-python3 {baseDir}/scripts/repo_scan.py --repo-root . --format markdown
-```
-
-Focused scan (when the task names a subsystem):
-```bash
-python3 {baseDir}/scripts/repo_scan.py --repo-root . --focus "auth session refresh" --format markdown
-```
-
-Extract concrete paths, commands, docs, tests, manifests, and likely touch points.
-Read the real files — not just directory names.
-
-### 2. Check GitHub for overlap before writing
+Run:
 
 ```bash
-gh issue list --state all --search "auth session refresh in:title,body sort:updated-desc"
-gh pr list --state all --search "auth session refresh sort:updated-desc"
+python3 {baseDir}/scripts/repo_scan.py --format pretty
 ```
 
-Do not create a new issue if an open issue or active PR already covers the same work.
-If there is overlap: comment on the existing issue/PR, or create a narrower follow-up with explicit boundaries.
+If the request already points at a subsystem, rerun with focus:
 
-See `{baseDir}/references/SEARCH_PATTERNS.md` for full overlap search strategy.
+```bash
+python3 {baseDir}/scripts/repo_scan.py --focus "auth session refresh" --format pretty
+```
 
-### 3. Inspect the implementation area
+Extract:
+- exact file paths
+- docs and ADRs
+- tests and workflow touch points
+- package manager and validation commands
+- obvious architecture constraints
 
-- Read the real files, not just directory names.
-- Identify the current behavior, missing behavior, architecture constraints, and test surface.
-- Prefer exact file paths and command lines over vague descriptions.
+### 2) Check for overlap before drafting
 
-### 4. Decide the issue shape
+If `gh` is authenticated:
 
-- Keep one executable problem per issue.
-- Split discovery work, migrations, and follow-up cleanups into separate issues if they can be merged independently.
-- Put non-goals in the issue body so the worker does not expand scope.
+```bash
+gh issue list --state all --search "session refresh in:title,body sort:updated-desc"
+gh pr list --state all --search "session refresh sort:updated-desc"
+```
 
-### 5. Draft with the canonical template
+Do not create a fresh issue if an open issue or active PR already covers the same work.
+Either:
+- narrow the new issue, or
+- attach findings to the existing thread.
+
+### 3) Read the implementation area, not just filenames
+
+Open the likely files.
+Confirm:
+- current behavior
+- missing behavior
+- constraints
+- likely touch points
+- probable verification surface
+
+Mark anything unverified as an assumption.
+
+### 4) Decide whether this should stay atomic
+
+Split when:
+- discovery is separate from implementation,
+- migration and cleanup can merge independently,
+- acceptance criteria get fuzzy,
+- one part is blocked by another part.
+
+### 5) Draft with the canonical template
 
 Use the exact section order from `{baseDir}/references/ISSUE_BODY_TEMPLATE.md`.
-Make the body self-sufficient: include context the worker would otherwise need to rediscover.
-Front-load the problem, desired outcome, affected areas, constraints, and verification.
 
-### 6. Lint before posting
+Minimum required sections:
+- Summary
+- Problem
+- Desired Outcome
+- Affected Areas
+- Constraints / Notes
+- Non-Goals
+- Acceptance Criteria
+- Verification
+- Related Context
+
+### 6) Lint before posting
+
+Save the body to a temporary file, then run:
 
 ```bash
 python3 {baseDir}/scripts/issue_lint.py \
   --title "feat: harden session refresh path" \
-  --body-file /tmp/issue.md
+  --body-file /tmp/issue.md \
+  --format pretty
 ```
 
-Fix every blocking error before creating the issue.
+Fix every blocking error.
 
-### 7. Create the issue
+### 7) Create or return the issue
+
+If the user wants a draft, return:
+- title
+- labels
+- full body
+
+If the user wants it posted:
 
 ```bash
 gh issue create \
   --title "feat: harden session refresh path" \
-  --label "enhancement" \
   --body-file /tmp/issue.md
 ```
 
-Add labels and assignee when you have enough signal.
-If the user asked only for a draft, return the final title, labels, and body instead of posting.
+Add labels only when they improve routing.
 
----
+## Non-negotiable standards
 
-## Creation pattern (full example)
+- Never post a title-only or context-light issue.
+- Never use vague acceptance criteria.
+- Always include exact code areas or modules.
+- Always state non-goals.
+- Always include real verification commands for this repo.
+- Separate facts from assumptions.
+- Keep one executable problem per issue.
 
-```bash
-# 1 — Scan
-python3 {baseDir}/scripts/repo_scan.py --focus "auth login session" --format markdown
+## Verification
 
-# 2 — Check overlap
-gh issue list --state all --search "auth login session in:title,body sort:updated-desc"
-gh pr list --state all --search "auth login session sort:updated-desc"
+The issue is acceptable only if all answers are yes:
 
-# 3 — Draft body using ISSUE_BODY_TEMPLATE.md, save to /tmp/issue.md
+- Does it name exact paths or modules?
+- Are acceptance criteria testable?
+- Are non-goals explicit?
+- Are verification commands real?
+- Was duplicate / adjacent work checked when possible?
+- Could another agent start implementation without basic follow-ups?
 
-# 4 — Lint
-python3 {baseDir}/scripts/issue_lint.py \
-  --title "feat: harden session refresh path" \
-  --body-file /tmp/issue.md
+## Failure modes
 
-# 5 — Post
-gh issue create \
-  --title "feat: harden session refresh path" \
-  --label "enhancement,auth" \
-  --body-file /tmp/issue.md
-```
+If repo scan is incomplete:
+- keep the issue draft-only unless explicitly asked to post,
+- mark assumptions clearly.
 
----
-
-## Non-negotiable rules
-
-1. **Never post a title-only or context-light issue.**
-   The issue body must contain enough information for a worker to act without asking basic follow-ups.
-
-2. **Acceptance criteria must be testable.**
-   Use checkboxes and observable outcomes. Avoid "clean up", "improve", "support", or "make better" without measurable conditions.
-
-3. **Prefer repository-native language.**
-   Mirror the codebase's naming, directories, script names, package manager, and architecture vocabulary.
-
-4. **Show the worker where to look.**
-   Always include an `Affected Areas` section with exact paths, modules, packages, or workflows.
-
-5. **Separate facts from assumptions.**
-   If something is inferred rather than confirmed, mark it explicitly as an assumption or open question.
-
-6. **State verification commands explicitly.**
-   Include the exact commands the worker should run for local validation and the expected high-level outcome.
-
-7. **Call out scope limits.**
-   A strong issue tells the agent what NOT to touch.
-
----
-
-## Good labels
-
-Use only labels that materially help routing:
-- `bug`
-- `enhancement`
-- `refactor`
-- `ci`
-- `docs`
-- `tech-debt`
-- `blocked`
-- `breaking-change`
-- stack or area labels already used by the repo (check with `gh label list`)
-
----
-
-## Final check before posting
-
-Do not create the issue until all answers are "yes":
-- [ ] Is the scope atomic (one merge = one problem solved)?
-- [ ] Does the body name the real code paths?
-- [ ] Are duplicates and related PRs linked?
-- [ ] Are non-goals explicit?
-- [ ] Are acceptance criteria testable (checkboxes with observable outcomes)?
-- [ ] Are verification commands real for this repository (not invented)?
-- [ ] Is the Agent context section filled in (complexity, model hint, target branch)?
+If GitHub overlap search is unavailable:
+- still draft the issue,
+- note that duplicate search could not be confirmed.

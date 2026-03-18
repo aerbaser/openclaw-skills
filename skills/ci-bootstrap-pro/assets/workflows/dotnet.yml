@@ -1,0 +1,37 @@
+
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 'ci-${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '{{DOTNET_VERSION}}'
+
+      - name: Restore
+        run: '{{RESTORE_COMMAND}}'
+
+      - name: Build
+        run: '{{BUILD_COMMAND}}'
+
+      - name: Test
+        run: '{{TEST_COMMAND}}'

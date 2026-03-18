@@ -1,0 +1,76 @@
+
+name: Bug report
+description: Report a reproducible defect with enough detail to debug and verify.
+title: 'bug: '
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One short paragraph describing the defect.
+      placeholder: API request fails during session refresh after token rotation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is happening now and why is it wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Exact steps, inputs, environment, and observed result.
+      placeholder: |
+        1. Authenticate
+        2. Rotate token
+        3. Call refresh endpoint
+        4. Observe 401 + stale session state
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, stack traces, screenshots, or failing tests.
+    validations:
+      required: false
+
+  - type: textarea
+    id: affected-areas
+    attributes:
+      label: Affected areas
+      description: Paths, modules, workflows, or services that look involved.
+      placeholder: |
+        - apps/api/src/auth/session.ts
+        - packages/auth-client
+        - .github/workflows/ci.yml
+    validations:
+      required: false
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: How should a maintainer or agent confirm the fix?
+      placeholder: |
+        npm test -- auth/session
+        npm run lint
+        npm run build
+    validations:
+      required: true

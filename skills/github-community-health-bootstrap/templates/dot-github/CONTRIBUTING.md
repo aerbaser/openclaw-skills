@@ -1,16 +1,22 @@
+
 # Contributing
 
-## Before opening a PR
+## Before opening a pull request
 
-- make sure the change belongs in this repository;
-- link the relevant issue when work is non-trivial;
-- keep the PR scope narrow;
-- run the documented checks before asking for review.
+1. Read the repository README and local setup notes.
+2. Check for an existing issue or open one if the change is non-trivial.
+3. Keep changes scoped.
+4. Update tests or validation where relevant.
 
-## Pull request bar
+## Pull request expectations
 
-A good PR contains:
-- clear purpose;
-- linked issue or rationale;
-- test evidence;
-- notes about rollout, migration, or non-goals when relevant.
+A good PR includes:
+- a clear summary,
+- why the change exists,
+- how it was tested,
+- any rollout or compatibility notes.
+
+## Scope discipline
+
+Do not mix unrelated cleanup into a functional change unless the repository owners asked for it.
+Small focused PRs review faster and break less.

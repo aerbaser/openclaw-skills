@@ -1,27 +1,33 @@
+
 # Request Patterns
 
-## Route to portfolio-cleanup
-- “разгреби GitHub”
-- “наведи порядок по всем репам”
-- “много форков, клонов, пустых реп”
-- “нужен cleanup портфеля”
+## Portfolio cleanup
+Use when the user says:
+- "наведи порядок на GitHub"
+- "у меня куча хлама в репозиториях"
+- "разбери форки, клоны и пустышки"
+- "сделай нормальную систему для GitHub"
 
-## Route to org-baseline-bootstrap
-- “сделай общий baseline”
-- “нужен `.github` repo”
-- “сделай default templates и community files”
+## Org baseline bootstrap
+Use when the user says:
+- "сделай shared шаблоны и правила"
+- "создай `.github` baseline"
+- "нужны issue/PR templates на все репозитории"
 
-## Route to repo-hardening
-- “подними repo до production baseline”
-- “нужны CODEOWNERS / labels / CI / security”
-- “сделай repo managed”
+## Repo hardening
+Use when the user says:
+- "приведи этот repo в managed состояние"
+- "добавь governance/security/CI baseline"
+- "сделай этот репозиторий production-grade"
 
-## Route to issue-intake
-- “сделай issue под агента”
-- “перепиши задачу”
-- “разбей это на executable issue”
+## Issue intake
+Use when the user says:
+- "напиши ишью"
+- "перепиши issue"
+- "разбей работу на задачи для агента"
 
-## Route to maintenance
-- “проверь drift”
-- “сделай hygiene review”
-- “ежемесячный аудит”
+## Maintenance
+Use when the user says:
+- "раз в месяц прогоняй аудит"
+- "сделай recurring cleanup"
+- "поддерживай GitHub в порядке"

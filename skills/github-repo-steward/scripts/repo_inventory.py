@@ -1,12 +1,21 @@
-#!/usr/bin/env python3
-import argparse, json, subprocess, sys
-from pathlib import Path
 
-QUERY = """
-query($owner: String!, $cursor: String) {
-  repositoryOwner(login: $owner) {
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+OWNER_QUERY = """
+query($login: String!, $cursor: String) {
+  repositoryOwner(login: $login) {
     login
     repositories(first: 100, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      totalCount
       pageInfo { hasNextPage endCursor }
       nodes {
         name
@@ -15,20 +24,20 @@ query($owner: String!, $cursor: String) {
         url
         homepageUrl
         isArchived
+        isEmpty
         isFork
-        isPrivate
         isTemplate
-        hasIssuesEnabled
-        hasWikiEnabled
+        visibility
         createdAt
         updatedAt
         pushedAt
         diskUsage
         stargazerCount
         forkCount
-        primaryLanguage { name }
+        hasIssuesEnabled
         defaultBranchRef { name }
-        repositoryTopics(first: 30) { nodes { topic { name } } }
+        primaryLanguage { name }
+        repositoryTopics(first: 20) { nodes { topic { name } } }
         issues(states: OPEN) { totalCount }
         pullRequests(states: OPEN) { totalCount }
       }
@@ -37,64 +46,148 @@ query($owner: String!, $cursor: String) {
 }
 """
 
-def run_gh_graphql(owner: str):
-    repos = []
-    cursor = None
+VIEWER_QUERY = """
+query {
+  viewer {
+    login
+  }
+}
+"""
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Inventory repositories for a GitHub owner.")
+    parser.add_argument("--owner", help="GitHub owner login. Defaults to authenticated viewer.")
+    parser.add_argument("--output", help="Optional path to write raw JSON.")
+    parser.add_argument("--format", choices=["json", "pretty", "markdown"], default="json")
+    return parser.parse_args()
+
+
+def require_gh() -> None:
+    if shutil.which("gh") is None:
+        raise RuntimeError("gh CLI not found in PATH.")
+
+
+def run_gh(args: List[str]) -> Dict[str, Any]:
+    completed = subprocess.run(["gh", *args], capture_output=True, text=True, check=False)
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "gh command failed")
+    return json.loads(completed.stdout)
+
+
+def viewer_login() -> str:
+    response = run_gh(["api", "graphql", "-f", f"query={VIEWER_QUERY}"])
+    return response["data"]["viewer"]["login"]
+
+
+def fetch_owner_repos(login: str) -> List[Dict[str, Any]]:
+    cursor: Optional[str] = None
+    repos: List[Dict[str, Any]] = []
     while True:
-        payload = {
-            "query": QUERY,
-            "variables": {"owner": owner, "cursor": cursor}
-        }
-        proc = subprocess.run(
-            ["gh", "api", "graphql", "-f", f"query={QUERY}", "-F", f"owner={owner}"] + ([ "-F", f"cursor={cursor}"] if cursor else []),
-            capture_output=True,
-            text=True
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(proc.stderr.strip() or "gh api graphql failed")
-        data = json.loads(proc.stdout)
-        owner_data = data["data"]["repositoryOwner"]
-        page = owner_data["repositories"]
-        repos.extend(page["nodes"])
-        if not page["pageInfo"]["hasNextPage"]:
+        args = ["api", "graphql", "-f", f"query={OWNER_QUERY}", "-F", f"login={login}"]
+        if cursor:
+            args.extend(["-F", f"cursor={cursor}"])
+        response = run_gh(args)
+        owner = response["data"]["repositoryOwner"]
+        if owner is None:
+            raise RuntimeError(f"Owner '{login}' not found or inaccessible.")
+        chunk = owner["repositories"]["nodes"]
+        for node in chunk:
+            repos.append({
+                "name": node["name"],
+                "nameWithOwner": node["nameWithOwner"],
+                "description": node["description"],
+                "url": node["url"],
+                "homepageUrl": node["homepageUrl"],
+                "isArchived": node["isArchived"],
+                "isEmpty": node["isEmpty"],
+                "isFork": node["isFork"],
+                "isTemplate": node["isTemplate"],
+                "visibility": node["visibility"],
+                "createdAt": node["createdAt"],
+                "updatedAt": node["updatedAt"],
+                "pushedAt": node["pushedAt"],
+                "diskUsage": node["diskUsage"],
+                "stargazerCount": node["stargazerCount"],
+                "forkCount": node["forkCount"],
+                "hasIssuesEnabled": node["hasIssuesEnabled"],
+                "defaultBranch": (node.get("defaultBranchRef") or {}).get("name"),
+                "primaryLanguage": (node.get("primaryLanguage") or {}).get("name"),
+                "topics": [item["topic"]["name"] for item in node["repositoryTopics"]["nodes"]],
+                "openIssues": node["issues"]["totalCount"],
+                "openPullRequests": node["pullRequests"]["totalCount"],
+            })
+        page = owner["repositories"]["pageInfo"]
+        if not page["hasNextPage"]:
             break
-        cursor = page["pageInfo"]["endCursor"]
-    return {"owner": owner, "repositories": repos}
+        cursor = page["endCursor"]
+    return repos
 
-def render_markdown(data):
-    lines = []
-    repos = data["repositories"]
-    lines.append(f"# Repository inventory for `{data['owner']}`")
+
+def as_markdown(owner: str, repos: List[Dict[str, Any]]) -> str:
+    lines = [f"# Repository Inventory for `{owner}`", ""]
+    lines.append(f"- total repos: `{len(repos)}`")
     lines.append("")
-    lines.append(f"Total repos: **{len(repos)}**")
-    lines.append("")
-    lines.append("| Repo | Archived | Fork | Template | Private | Updated | Open PRs | Open Issues | Topics |")
-    lines.append("|---|---:|---:|---:|---:|---|---:|---:|---|")
-    for r in repos:
-        topics = ", ".join(n["topic"]["name"] for n in r.get("repositoryTopics", {}).get("nodes", []))
+    lines.append("| Repo | Visibility | State | Primary language | Updated |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    for repo in repos:
+        state = []
+        if repo["isArchived"]:
+            state.append("archived")
+        if repo["isFork"]:
+            state.append("fork")
+        if repo["isTemplate"]:
+            state.append("template")
+        if repo["isEmpty"]:
+            state.append("empty")
         lines.append(
-            f"| {r['nameWithOwner']} | {'yes' if r['isArchived'] else 'no'} | {'yes' if r['isFork'] else 'no'} | "
-            f"{'yes' if r['isTemplate'] else 'no'} | {'yes' if r['isPrivate'] else 'no'} | {r.get('updatedAt','')} | "
-            f"{r.get('pullRequests',{}).get('totalCount',0)} | {r.get('issues',{}).get('totalCount',0)} | {topics} |"
+            f"| `{repo['nameWithOwner']}` | {repo['visibility'].lower()} | {', '.join(state) or 'active'} | "
+            f"{repo['primaryLanguage'] or '—'} | {repo['updatedAt'][:10] if repo['updatedAt'] else '—'} |"
         )
-    return "\n".join(lines)
+    return "\n".join(lines) + "\n"
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--owner", required=True)
-    p.add_argument("--out", help="write raw json inventory")
-    p.add_argument("--format", choices=["json", "markdown", "pretty"], default="pretty")
-    args = p.parse_args()
 
-    data = run_gh_graphql(args.owner)
+def as_pretty(owner: str, repos: List[Dict[str, Any]]) -> str:
+    lines = ["Repository Inventory", "==================", ""]
+    lines.append(f"owner: {owner}")
+    lines.append(f"total repos: {len(repos)}")
+    lines.append("")
+    for repo in repos:
+        flags = []
+        if repo["isArchived"]:
+            flags.append("archived")
+        if repo["isFork"]:
+            flags.append("fork")
+        if repo["isTemplate"]:
+            flags.append("template")
+        if repo["isEmpty"]:
+            flags.append("empty")
+        lines.append(f"- {repo['nameWithOwner']}  [{repo['visibility'].lower()}]  ({', '.join(flags) or 'active'})")
+    return "\n".join(lines) + "\n"
 
-    if args.out:
-        Path(args.out).write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def main() -> int:
+    args = parse_args()
+    try:
+        require_gh()
+        owner = args.owner or viewer_login()
+        repos = fetch_owner_repos(owner)
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+        return 1
+
+    payload = {"ok": True, "owner": owner, "repositories": repos}
+    if args.output:
+        Path(args.output).write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     if args.format == "json":
-        print(json.dumps(data, indent=2))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    elif args.format == "markdown":
+        print(as_markdown(owner, repos))
     else:
-        print(render_markdown(data))
+        print(as_pretty(owner, repos))
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

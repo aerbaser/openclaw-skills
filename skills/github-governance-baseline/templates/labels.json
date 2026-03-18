@@ -2,56 +2,51 @@
   {
     "name": "bug",
     "color": "d73a4a",
-    "description": "Defect"
+    "description": "Something is broken and needs a fix"
   },
   {
     "name": "enhancement",
     "color": "a2eeef",
-    "description": "Product or engineering improvement"
+    "description": "New capability or behavior improvement"
   },
   {
-    "name": "task",
-    "color": "7057ff",
-    "description": "Execution task"
-  },
-  {
-    "name": "tech-debt",
-    "color": "5319e7",
-    "description": "Cleanup or refactor work"
+    "name": "refactor",
+    "color": "cfd3d7",
+    "description": "Internal code restructuring without user-visible scope"
   },
   {
     "name": "ci",
-    "color": "1d76db",
-    "description": "Continuous integration and automation"
+    "color": "0e8a16",
+    "description": "Continuous integration or workflow work"
+  },
+  {
+    "name": "docs",
+    "color": "0075ca",
+    "description": "Documentation changes"
+  },
+  {
+    "name": "tech-debt",
+    "color": "fbca04",
+    "description": "Maintenance or debt reduction work"
   },
   {
     "name": "security",
     "color": "b60205",
-    "description": "Security work"
-  },
-  {
-    "name": "docs",
-    "color": "0e8a16",
-    "description": "Documentation"
+    "description": "Security-related change or issue"
   },
   {
     "name": "blocked",
+    "color": "5319e7",
+    "description": "Cannot proceed until dependency or decision is resolved"
+  },
+  {
+    "name": "breaking-change",
     "color": "000000",
-    "description": "Cannot proceed"
+    "description": "Introduces an incompatible change"
   },
   {
-    "name": "priority:high",
-    "color": "d93f0b",
-    "description": "High priority"
-  },
-  {
-    "name": "priority:medium",
-    "color": "fbca04",
-    "description": "Medium priority"
-  },
-  {
-    "name": "priority:low",
-    "color": "c2e0c6",
-    "description": "Low priority"
+    "name": "infrastructure",
+    "color": "1d76db",
+    "description": "Infra, deployment, or platform work"
   }
 ]

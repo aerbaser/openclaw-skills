@@ -1,72 +1,53 @@
+
 # Issue Quality Rubric
 
-Score every draft before posting. Use 0–2 per category (10+ points = acceptable; 12+ = good).
+## Blocking failures
 
----
+Do not post if any are true.
 
-## 1. Scope clarity
-- 0 = broad / mushy / multi-project
-- 1 = mostly scoped but still leaks
-- 2 = atomic and mergeable in one PR
+### B1. Missing structure
+One or more required sections are missing.
 
-## 2. Codebase grounding
-- 0 = generic, no paths
-- 1 = mentions areas loosely
-- 2 = exact files / modules / workflows named
+### B2. No implementation surface
+No exact file paths, modules, packages, or workflows are named.
 
-## 3. Acceptance criteria
-- 0 = subjective or vague
-- 1 = partly testable
-- 2 = crisp, observable, complete checkboxes
+### B3. Vague acceptance criteria
+Acceptance criteria use words like:
+- improve
+- support
+- clean up
+- make better
+without measurable conditions.
 
-## 4. Verification
-- 0 = missing
-- 1 = generic commands
-- 2 = repo-real commands with expected outcome
+### B4. No verification commands
+The issue gives no concrete way to validate the change.
 
-## 5. Constraint handling
-- 0 = ignores architecture / compatibility limits
-- 1 = partial
-- 2 = explicit and useful non-goals / constraints
+### B5. Scope blob
+The issue mixes unrelated workstreams that should be separate issues.
 
-## 6. Handoff quality
-- 0 = worker will ask follow-ups immediately
-- 1 = mostly self-sufficient
-- 2 = implementation-ready, no basic follow-ups needed
+## Warnings
 
----
+These do not block posting, but should be fixed when possible.
 
-## Blocking failures (automatic lint rejection)
+### W1. Assumptions are not labeled
+Inferred facts look like confirmed facts.
 
-Any of these fails the issue regardless of score:
-- missing `Affected Areas`
-- missing `Non-goals`
-- missing `Acceptance Criteria`
-- missing `Verification`
-- zero checkboxes in acceptance criteria
-- no file paths or modules named
-- body < 3 meaningful sentences
-- obvious duplicate exists and is not addressed
-- title is vague: "fix stuff", "cleanup", "improve"
+### W2. Related work not linked
+Adjacent issues or PRs are mentioned vaguely or not at all.
 
----
+### W3. Non-goals are weak
+The worker could still sprawl into adjacent cleanup.
 
-## Complexity heuristic
+### W4. Title is generic
+Examples of weak titles:
+- fix auth
+- improve CI
+- refactor utils
 
-| Label  | Signals |
-|--------|---------|
-| small  | 1–2 files, no schema changes, <2h, existing tests cover it |
-| medium | 3–7 files, possible API/schema changes, new tests needed |
-| large  | cross-cutting, >7 files, migration, new subsystem, agent needs to plan first |
+## Target quality bar
 
----
-
-## Common vague verbs to replace
-
-| Vague | Better |
-|-------|--------|
-| clean up | extract / remove / rename / consolidate |
-| improve | reduce latency from X to Y / increase coverage to 80% |
-| support | add endpoint / add field / add flag |
-| handle properly | return 400 when / log and retry when / skip when |
-| make better | shrink bundle by / reduce queries from N to 1 |
+A strong issue should let another agent answer these immediately:
+- where do I start?
+- what files are likely in scope?
+- what must not be changed?
+- how do I know I’m done?

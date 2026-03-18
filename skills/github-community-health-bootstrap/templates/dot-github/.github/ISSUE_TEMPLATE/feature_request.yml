@@ -1,0 +1,70 @@
+
+name: Feature request
+description: Propose a concrete improvement with scope and success criteria.
+title: 'feat: '
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One short paragraph describing the requested capability.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What limitation or friction exists today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired-outcome
+    attributes:
+      label: Desired outcome
+      description: What should users or systems be able to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope hints
+      description: Paths, modules, packages, services, or workflows likely in scope.
+      placeholder: |
+        - apps/web/src/features/billing
+        - packages/payments
+        - docs/billing.md
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints or non-goals
+      description: Compatibility, rollout, security, performance, or explicit exclusions.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Write concrete observable outcomes.
+      placeholder: |
+        - [ ] Users can ...
+        - [ ] API returns ...
+        - [ ] Existing flow remains ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Commands or checks that prove the feature is complete.
+    validations:
+      required: true

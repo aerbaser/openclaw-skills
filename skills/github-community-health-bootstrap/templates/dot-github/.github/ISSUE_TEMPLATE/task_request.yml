@@ -1,0 +1,58 @@
+
+name: Task request
+description: Track a concrete engineering task, refactor, migration, or maintenance item.
+title: 'task: '
+labels:
+  - tech-debt
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One short paragraph describing the task.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why does this task exist now?
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-areas
+    attributes:
+      label: Affected areas
+      description: Exact paths, modules, workflows, or systems in scope.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: What should not be changed in this task?
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete definition of done.
+      placeholder: |
+        - [ ] obsolete workflow removed
+        - [ ] replacement workflow passes on default branch
+        - [ ] docs updated
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Commands or checks that confirm completion.
+    validations:
+      required: true

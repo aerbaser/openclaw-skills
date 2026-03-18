@@ -1,19 +1,18 @@
+
 # Review Cadence
 
 ## Weekly
-- open PR age
-- broken default branch CI
-- new unmanaged repos
-- agent-created playground repos
+- stale PR review
+- broken default-branch CI review
+- new lab / fork / parking repo review
 
 ## Monthly
-- run inventory + scoring
-- archive obvious dead repos
-- promote stable starters to templates
-- review intentional forks
+- full `github-repo-steward` audit
+- archive obvious dead repos after approval
+- delete approved parking repos
+- refresh template repo list
 
 ## Quarterly
-- access audit
-- ruleset audit
-- topics / descriptions audit
-- check that managed repos still deserve managed status
+- review whether templates are still current
+- review ruleset and CODEOWNERS quality on managed repos
+- review whether forks are still intentional

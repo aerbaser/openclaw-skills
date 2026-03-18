@@ -1,72 +1,105 @@
+
 ---
 name: github-community-health-bootstrap
-description: Create or refresh a public `.github` repository with default community health files and default issue/PR templates for an organization or user. Use when you need one central intake and contribution baseline for many repositories.
+description: Use when creating or upgrading a public `.github` repository that supplies default community health files, issue intake forms, support information, security contacts, and a pull request template across many repositories.
 license: MIT
-compatibility: openclaw; gh and python3 recommended.
+compatibility: openclaw; best with GitHub CLI auth and permission to create or update the target `.github` repository.
 metadata:
   author: OpenAI
-  version: "3.0.0"
+  version: "4.0.0"
   tags:
     - github
-    - templates
     - community-health
-    - intake
-    - org-baseline
+    - templates
+    - governance
+    - bootstrap
 ---
 
 # GitHub Community Health Bootstrap
 
-Use this skill to create the shared `.github` repo baseline.
+Create the shared `.github` baseline once, then stop redoing the same templates in every repo.
 
-## Read first
+## Trigger phrases
 
-- `{baseDir}/references/WHY_DOT_GITHUB.md`
+Activate when the user asks to:
+
+- create a public `.github` repository
+- set default issue / PR templates
+- set default contribution / support / security docs
+- standardize intake across many repos
+- bootstrap shared GitHub defaults
+
+## Read this first
+
+Always read:
+
+- `{baseDir}/references/DEFAULT_FILE_SCOPE.md`
+- `{baseDir}/references/COMMUNITY_HEALTH_CHECKLIST.md`
+- `{baseDir}/references/TEMPLATE_CHOOSER.md`
+
+Starter files live in:
+
+- `{baseDir}/templates/dot-github/`
+
+Renderer:
+
+```bash
+python3 {baseDir}/scripts/render_dot_github.py \
+  --src {baseDir}/templates/dot-github \
+  --dest /tmp/dot-github \
+  --owner-name "My Org" \
+  --support-url "https://example.com/support" \
+  --security-email "security@example.com"
+```
 
 ## Workflow
 
-### 1) Ensure the `.github` repository exists
+### 1) Confirm shared baseline is the right layer
 
-Example:
-```bash
-gh repo create YOUR_OWNER/.github --public --description "Default community health files and templates"
-```
+Use a public `.github` repo when:
+- many repos need the same contribution and support defaults,
+- you want one standard intake path,
+- local overrides should be rare.
 
-### 2) Scaffold defaults into a local checkout
+### 2) Render the templates
 
-```bash
-python3 {baseDir}/scripts/scaffold_dot_github.py \
-  --dest /path/to/local/.github-repo \
-  --owner YOUR_ORG \
-  --contact-email security@example.com \
-  --maintainer your-github-handle
-```
+Replace placeholders with real org/account values.
+Keep missing values obvious rather than inventing fake contacts.
 
-The script substitutes `{{ORG}}`, `{{EMAIL}}`, `{{MAINTAINER}}` in all templates automatically.
+### 3) Create or update the `.github` repo
 
-### 3) Review generated files
+Target repo name:
+- `.github`
 
-Verify substitutions landed correctly. Adjust anything specific to your repo structure.
-
-### 4) Commit and push
-
-Use one clean PR or direct commit if this repo is bootstrap-only.
-
-## What this skill owns
-
+Populate:
+- `README.md`
 - `CONTRIBUTING.md`
 - `CODE_OF_CONDUCT.md`
-- `SUPPORT.md`
 - `SECURITY.md`
-- issue templates
-- PR template
+- `SUPPORT.md`
+- `.github/ISSUE_TEMPLATE/*.yml`
+- `.github/ISSUE_TEMPLATE/config.yml`
+- `.github/pull_request_template.md`
 
-## Default policy
+### 4) Keep repo-local overrides rare
 
-Prefer Markdown issue templates by default.
-Only move to issue forms if you intentionally want GitHub form-schema maintenance.
+Override in a specific repo only if:
+- the repo truly has different contributors,
+- the repo needs stack-specific intake,
+- the shared defaults would create bad friction.
 
-## Done means
+## Non-negotiables
 
-- `.github` repo exists and is public
-- defaults are committed
-- repos without local overrides inherit sane intake files
+- Do not create repo-local copies everywhere if shared defaults are sufficient.
+- Do not invent fake support or security contacts.
+- Keep forms concise and operational.
+- Keep the shared repo public so GitHub can use the defaults.
+
+## Verification
+
+The bootstrap is good only if:
+- the `.github` repo is public,
+- all key files exist,
+- issue forms / config are in `.github/ISSUE_TEMPLATE/`,
+- the PR template is in a supported location,
+- placeholders were intentionally resolved or left explicit.

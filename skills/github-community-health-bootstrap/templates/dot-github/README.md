@@ -1,5 +1,14 @@
-# .github defaults
 
-This repository stores default community health files and intake templates for repositories owned by **YOUR_OWNER**.
+# Shared Community Health Files
 
-Files here are the fallback baseline for repos that do not define their own local overrides.
+This repository provides default community health files for repositories owned by **{{OWNER_NAME}}**.
+
+Contents:
+- contribution guidelines
+- code of conduct
+- support information
+- security reporting instructions
+- issue intake forms
+- pull request template
+
+Create repo-local overrides only when the shared defaults are genuinely wrong for a specific repository.

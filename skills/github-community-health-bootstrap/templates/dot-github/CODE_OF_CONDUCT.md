@@ -1,7 +1,24 @@
+
 # Code of Conduct
 
-Be direct, respectful, and useful.
+We expect contributors to act like serious collaborators.
 
-Unacceptable behavior includes harassment, hostility, personal attacks, and deliberate disruption of collaboration.
+## Expected behavior
 
-Contact: {{EMAIL}}
+- be direct and respectful
+- critique ideas, not people
+- keep discussions technical and useful
+- assume good intent until evidence shows otherwise
+- respect maintainers' scope decisions
+
+## Unacceptable behavior
+
+- harassment
+- personal attacks
+- threats
+- deliberate disruption
+- bad-faith spam or trolling
+
+## Enforcement
+
+Maintainers may remove content, lock threads, or restrict access when behavior damages productive collaboration.

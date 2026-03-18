@@ -1,102 +1,156 @@
+
 #!/usr/bin/env python3
-import argparse, csv, json, sys
+from __future__ import annotations
+
+import argparse
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
-NOW = datetime.now(timezone.utc)
+LAB_TOKENS = {"lab", "playground", "sandbox", "poc", "spike", "scratch", "demo", "experiment", "tmp", "temp", "test"}
+TEMPLATE_TOKENS = {"template", "starter", "boilerplate", "scaffold"}
+PARKING_TOKENS = {"placeholder", "empty", "parking", "stub"}
 
-def days_since(ts):
-    if not ts:
-        return 99999
-    try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-    except Exception:
-        return 99999
-    return (NOW - dt).days
 
-def has_topics(repo):
-    return bool(repo.get("repositoryTopics", {}).get("nodes"))
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Classify GitHub repositories into a small governance taxonomy.")
+    parser.add_argument("--inventory", required=True, help="Path to inventory JSON from repo_inventory.py")
+    parser.add_argument("--output", help="Optional path for scored JSON")
+    parser.add_argument("--format", choices=["json", "pretty", "markdown"], default="json")
+    return parser.parse_args()
 
-def classify(repo):
-    updated_days = days_since(repo.get("pushedAt") or repo.get("updatedAt"))
-    name = repo["name"].lower()
-    open_prs = repo.get("pullRequests", {}).get("totalCount", 0)
-    open_issues = repo.get("issues", {}).get("totalCount", 0)
-    weak_meta = not repo.get("description") and not has_topics(repo)
 
-    suspicious_name = any(token in name for token in [
-        "tmp", "temp", "copy", "clone", "backup", "old", "sandbox", "playground", "test", "draft", "agent"
-    ])
+def iso_days_ago(value: str | None) -> int | None:
+    if not value:
+        return None
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return (datetime.now(timezone.utc) - dt).days
+
+
+def classify(repo: Dict[str, Any]) -> Tuple[str, str, List[str]]:
+    reasons: List[str] = []
+    name_l = repo["name"].lower()
+    desc_l = (repo.get("description") or "").lower()
+    topics = {topic.lower() for topic in repo.get("topics") or []}
+    stale_days = iso_days_ago(repo.get("pushedAt"))
+    open_prs = int(repo.get("openPullRequests") or 0)
+    open_issues = int(repo.get("openIssues") or 0)
+    disk_usage = int(repo.get("diskUsage") or 0)
 
     if repo.get("isArchived"):
-        return "archive", "keep_archived", "already archived"
+        reasons.append("already archived")
+        return "archive", "keep-archived", reasons
 
-    if repo.get("isTemplate"):
-        return "template", "convert_to_template", "marked as template repository"
+    if repo.get("isTemplate") or topics & TEMPLATE_TOKENS or any(token in name_l for token in TEMPLATE_TOKENS):
+        reasons.append("template signal detected")
+        return "template", "keep-template", reasons
 
     if repo.get("isFork"):
-        if updated_days > 365 and open_prs == 0:
-            return "fork", "archive_candidate", "fork looks inactive"
-        return "fork", "keep_fork", "fork retained"
+        reasons.append("repository is a fork")
+        if stale_days is not None and stale_days > 180 and open_prs == 0:
+            reasons.append(f"stale fork ({stale_days} days since push)")
+            return "fork", "archive-candidate", reasons
+        return "fork", "keep-fork-review", reasons
 
-    if repo.get("diskUsage", 0) == 0 and weak_meta:
-        return "parking", "delete_candidate", "empty or near-empty and undefined"
+    if repo.get("isEmpty") or disk_usage <= 5:
+        reasons.append("empty or near-empty")
+        if stale_days is None or stale_days > 30:
+            return "parking", "delete-candidate", reasons
+        return "parking", "review-parking", reasons
 
-    if updated_days > 365 and open_prs == 0 and open_issues == 0 and weak_meta:
-        return "archive", "archive_candidate", "inactive and weakly defined"
+    if topics & PARKING_TOKENS or any(token in name_l or token in desc_l for token in PARKING_TOKENS):
+        reasons.append("parking signal detected")
+        if stale_days is not None and stale_days > 30 and open_prs == 0:
+            return "parking", "delete-candidate", reasons
+        return "parking", "review-parking", reasons
 
-    if suspicious_name and updated_days > 180 and open_prs == 0:
-        return "lab", "archive_candidate", "looks like experiment or duplicate"
+    if topics & LAB_TOKENS or any(token in name_l or token in desc_l for token in LAB_TOKENS):
+        reasons.append("lab signal detected")
+        if stale_days is not None and stale_days > 180 and open_prs == 0 and open_issues == 0:
+            reasons.append(f"stale lab ({stale_days} days since push)")
+            return "lab", "archive-candidate", reasons
+        return "lab", "keep-lab-review", reasons
 
-    if weak_meta:
-        return "parking", "promote_or_retire", "needs definition or retirement"
+    reasons.append("non-empty repository without fork/template/lab/parking signals")
+    action = "keep-managed"
+    if not repo.get("description"):
+        reasons.append("missing description")
+        action = "harden-managed"
+    elif not topics:
+        reasons.append("missing topics")
+        action = "harden-managed"
+    elif stale_days is not None and stale_days > 365 and open_prs == 0:
+        reasons.append(f"managed but stale ({stale_days} days since push)")
+        action = "review-managed"
+    return "managed", action, reasons
 
-    if updated_days > 180 and open_prs == 0:
-        return "managed", "harden_baseline", "looks real but needs baseline review"
 
-    return "managed", "keep_managed", "active repo"
-
-def render_markdown(rows):
-    lines = []
-    lines.append("# Repository classification")
-    lines.append("")
-    lines.append("| Repo | Class | Action | Reason |")
-    lines.append("|---|---|---|---|")
-    for row in rows:
-        lines.append(f"| {row['nameWithOwner']} | {row['class']} | {row['action']} | {row['reason']} |")
-    return "\n".join(lines)
-
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--inventory", required=True)
-    p.add_argument("--out", help="write CSV plan")
-    p.add_argument("--format", choices=["markdown", "json", "pretty"], default="pretty")
-    args = p.parse_args()
-
-    data = json.loads(Path(args.inventory).read_text(encoding="utf-8"))
-    rows = []
-    for repo in data["repositories"]:
-        cls, action, reason = classify(repo)
-        rows.append({
-            "nameWithOwner": repo["nameWithOwner"],
-            "class": cls,
-            "action": action,
-            "reason": reason,
-            "updatedAt": repo.get("updatedAt") or "",
-            "pushedAt": repo.get("pushedAt") or "",
-            "isPrivate": str(repo.get("isPrivate", False)).lower(),
+def score_inventory(payload: Dict[str, Any]) -> Dict[str, Any]:
+    classified = []
+    summary: Dict[str, int] = {k: 0 for k in ["managed", "template", "fork", "lab", "archive", "parking"]}
+    actions: Dict[str, int] = {}
+    for repo in payload.get("repositories") or []:
+        klass, action, reasons = classify(repo)
+        summary[klass] += 1
+        actions[action] = actions.get(action, 0) + 1
+        classified.append({
+            **repo,
+            "class": klass,
+            "recommendedAction": action,
+            "reasons": reasons,
+            "staleDays": iso_days_ago(repo.get("pushedAt")),
         })
+    return {
+        "owner": payload.get("owner"),
+        "summary": summary,
+        "actions": actions,
+        "repositories": classified,
+    }
 
-    if args.out:
-        with open(args.out, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-            w.writeheader()
-            w.writerows(rows)
 
+def render_markdown(payload: Dict[str, Any]) -> str:
+    lines = [f"# Repo Classification for `{payload['owner']}`", ""]
+    lines.append("## Summary")
+    for key, value in payload["summary"].items():
+        lines.append(f"- {key}: `{value}`")
+    lines.append("")
+    lines.append("| Repo | Class | Action | Reason highlights |")
+    lines.append("| --- | --- | --- | --- |")
+    for repo in payload["repositories"]:
+        reason = "; ".join(repo["reasons"][:3])
+        lines.append(f"| `{repo['nameWithOwner']}` | {repo['class']} | {repo['recommendedAction']} | {reason} |")
+    return "\n".join(lines) + "\n"
+
+
+def render_pretty(payload: Dict[str, Any]) -> str:
+    lines = ["Repo Classification", "===================", ""]
+    lines.append(f"owner: {payload['owner']}")
+    lines.append("summary:")
+    for key, value in payload["summary"].items():
+        lines.append(f"  - {key}: {value}")
+    lines.append("")
+    for repo in payload["repositories"]:
+        lines.append(f"- {repo['nameWithOwner']} -> {repo['class']} / {repo['recommendedAction']}")
+        for reason in repo["reasons"]:
+            lines.append(f"    * {reason}")
+    return "\n".join(lines) + "\n"
+
+
+def main() -> int:
+    args = parse_args()
+    payload = json.loads(Path(args.inventory).read_text(encoding="utf-8"))
+    scored = score_inventory(payload)
+    if args.output:
+        Path(args.output).write_text(json.dumps(scored, indent=2, ensure_ascii=False), encoding="utf-8")
     if args.format == "json":
-        print(json.dumps(rows, indent=2))
+        print(json.dumps(scored, indent=2, ensure_ascii=False))
+    elif args.format == "markdown":
+        print(render_markdown(scored))
     else:
-        print(render_markdown(rows))
+        print(render_pretty(scored))
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

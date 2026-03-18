@@ -1,14 +1,32 @@
+
 # Archive Policy
 
-Archive when most of these are true:
-- no active role in current delivery;
-- no meaningful recent push activity;
-- not a template;
-- not a canonical product repo;
-- not an intentionally maintained fork;
-- open issues/PRs do not represent active work.
+Archive when all or almost all are true:
 
-Before archiving:
-- write a short README note that the repo is historical;
-- link the replacement repo if one exists;
-- close or migrate stale issues/PRs if needed.
+- not a canonical product repo
+- no meaningful push activity for a long time
+- not an intentional template
+- not an intentional fork under active maintenance
+- no active PRs that still matter
+- no open issues that still matter
+
+## Before archive
+
+- check for replacement repo
+- close or move relevant open issues / PRs
+- update README or description if the historical context matters
+- keep a link to the replacement if one exists
+
+## Delete vs archive
+
+### Archive
+Use when:
+- history still has reference value
+- public links should continue to work
+- the repo explains previous work
+
+### Delete
+Use when:
+- it is a useless placeholder or accidental duplicate
+- it contains no historical value
+- the user explicitly approved removal

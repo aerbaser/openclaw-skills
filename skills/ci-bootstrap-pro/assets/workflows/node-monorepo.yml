@@ -1,0 +1,44 @@
+
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 'ci-${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  monorepo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '{{NODE_VERSION}}'
+          cache: '{{PACKAGE_MANAGER}}'
+
+      - name: Install
+        run: '{{INSTALL_COMMAND}}'
+
+      - name: Workspace lint
+        run: '{{LINT_COMMAND}}'
+
+      - name: Workspace typecheck
+        run: '{{TYPECHECK_COMMAND}}'
+
+      - name: Workspace test
+        run: '{{TEST_COMMAND}}'
+
+      - name: Workspace build
+        run: '{{BUILD_COMMAND}}'

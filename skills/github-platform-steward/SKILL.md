@@ -1,96 +1,137 @@
+
 ---
 name: github-platform-steward
-description: Orchestrate GitHub order end-to-end across a messy user or organization portfolio. Use when one DevOps agent should own repository cleanup, org defaults, repo baseline, security baseline, CI baseline, and execution-grade issue intake.
+description: Use when the user wants one DevOps agent to clean up GitHub, standardize repositories, bootstrap shared defaults, harden living repos, or run recurring GitHub maintenance through a single entrypoint.
 license: MIT
-compatibility: openclaw; gh and python3 recommended; best with authenticated GitHub CLI access.
+compatibility: openclaw; designed as a master skill that routes into specialized child skills.
 metadata:
   author: OpenAI
-  version: "3.0.0"
+  version: "4.0.0"
   tags:
     - github
     - governance
-    - platform
     - devops
     - orchestration
+    - portfolio
 ---
 
 # GitHub Platform Steward
 
-This is the top-level GitHub skill.
-Use it when the request is broad and messy.
+This is the master skill.
+It should route, not pretend to be every worker skill.
 
-## Supported modes
+## Trigger phrases
 
-Decide the mode first:
+Activate when the user asks to:
 
-- `portfolio-cleanup`
-- `org-baseline-bootstrap`
-- `repo-hardening`
-- `issue-intake`
-- `maintenance`
+- clean up GitHub
+- put GitHub in order
+- standardize repos
+- bootstrap GitHub governance
+- set up the full GitHub operating system
+- let one DevOps agent own the whole GitHub toolkit
+- run recurring GitHub maintenance
 
-Read:
+## Read this first
+
+Always read:
+
 - `{baseDir}/references/OPERATING_MODEL.md`
 - `{baseDir}/references/REQUEST_PATTERNS.md`
+- `{baseDir}/references/DELIVERY_FORMAT.md`
 
-## Mode routing
+## Choose the mode first
 
-### 1) portfolio-cleanup
+### 1) `portfolio-cleanup`
+Use when the problem is portfolio-level chaos:
+- duplicated repos
+- stale forks
+- empty repos
+- lab / parking / archive candidates
+- inconsistent baseline across many repos
 
-Use:
-- sibling skill `github-repo-steward`
-- then `github-community-health-bootstrap`
-- then `github-governance-baseline`
-- then `github-security-baseline`
-- then `ci-bootstrap-pro`
+Primary child skill:
+- `github-repo-steward`
 
-Required output:
-- inventory summary
-- repo classification table
-- archive/delete candidates
-- `.github` baseline status
-- rollout list for managed repos
-
-### 2) org-baseline-bootstrap
-
-Use:
+Secondary child skills after cleanup:
 - `github-community-health-bootstrap`
 - `github-governance-baseline`
+- `github-security-baseline`
+- `ci-bootstrap-pro`
 
-Goal:
-create one sane baseline for all current and future repos.
+### 2) `org-baseline-bootstrap`
+Use when the user needs shared defaults for an org or account.
 
-### 3) repo-hardening
+Primary child skill:
+- `github-community-health-bootstrap`
 
-Use in this order:
+Optional follow-up:
+- `github-governance-baseline`
+
+### 3) `repo-hardening`
+Use when one live repo must be upgraded into managed state.
+
+Run in this order:
 1. `github-governance-baseline`
 2. `github-security-baseline`
 3. `ci-bootstrap-pro`
 
-### 4) issue-intake
+### 4) `issue-intake`
+Use when the main need is execution-grade work intake.
 
-Use:
+Primary child skill:
 - `github-issue-forge`
 
-### 5) maintenance
+### 5) `maintenance`
+Use for recurring hygiene without redesigning everything.
 
-Repeatable operations:
-- monthly `github-repo-steward` audit
-- weekly `github-security-baseline` audit
-- per-repo `ci-bootstrap-pro` only on change or drift
-- `github-issue-forge` for every serious task handed to coding agents
+Typical sequence:
+1. `github-repo-steward` in audit mode
+2. `github-security-baseline` audit
+3. `ci-bootstrap-pro` review where needed
+4. `github-issue-forge` for follow-up tasks
 
-## Execution rules
+## Workflow
 
-- Start in audit mode unless the user explicitly wants apply mode.
-- Do not delete or archive repos silently.
-- Do not call a repo “managed” unless it has an owner, baseline docs, and CI.
-- Do not leave repos unclassified.
+### 1) Establish scope
+Determine:
+- personal account vs organization
+- one repo vs many repos
+- audit-only vs apply mode
+- whether destructive actions are allowed
 
-## Final response shape
+### 2) Route into the narrowest useful child skill
+Do not solve portfolio chaos with a repo-local skill.
+Do not solve a single issue draft with the portfolio skill.
 
+### 3) Execute child skills in order
+Prefer safe sequence:
+- inventory / audit
+- baseline
+- hardening
+- issue intake
+
+### 4) Consolidate output
 Always return:
-- what mode you ran
-- what you changed
-- what still requires admin rights or user intent
-- next 10 actions
+- what was inspected
+- what changed
+- what is still blocked
+- what needs explicit approval
+- next 10 actions in order
+
+## Non-negotiables
+
+- Audit first.
+- No destructive action without explicit approval.
+- No repo left unclassified in portfolio mode.
+- No repo-local override when the shared `.github` baseline is enough.
+- No issue drafting before repo scan when repo access exists.
+- No CI boilerplate detached from the real stack.
+
+## Completion standard
+
+The run is acceptable only if:
+- the correct mode was chosen,
+- the right child skills were invoked,
+- the final output is phased and prioritized,
+- destructive actions are separated from safe changes.

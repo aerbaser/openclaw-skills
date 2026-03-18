@@ -1,0 +1,40 @@
+
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 'ci-${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '{{PYTHON_VERSION}}'
+
+      - name: Install
+        run: '{{INSTALL_COMMAND}}'
+
+      - name: Lint
+        run: '{{LINT_COMMAND}}'
+
+      - name: Typecheck
+        run: '{{TYPECHECK_COMMAND}}'
+
+      - name: Test
+        run: '{{TEST_COMMAND}}'

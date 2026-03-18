@@ -1,0 +1,35 @@
+
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: 'ci-${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  ruby:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '{{RUBY_VERSION}}'
+          bundler-cache: true
+
+      - name: Install
+        run: '{{INSTALL_COMMAND}}'
+
+      - name: Test
+        run: '{{TEST_COMMAND}}'
