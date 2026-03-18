@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [__DEFAULT_BRANCH__]
+  pull_request:
+    branches: [__DEFAULT_BRANCH__]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maven:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "__JAVA_VERSION__"
+          cache: maven
+
+      - name: Verify
+        run: mvn -B -ntp verify

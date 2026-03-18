@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [__DEFAULT_BRANCH__]
+  pull_request:
+    branches: [__DEFAULT_BRANCH__]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "__NODE_VERSION__"
+          cache: "__CACHE__"
+
+      - name: Install
+        run: __INSTALL_CMD__
+
+      - name: Lint
+        if: ${{ __RUN_LINT__ }}
+        run: __LINT_CMD__
+
+      - name: Typecheck
+        if: ${{ __RUN_TYPECHECK__ }}
+        run: __TYPECHECK_CMD__
+
+      - name: Test
+        if: ${{ __RUN_TEST__ }}
+        run: __TEST_CMD__
+
+      - name: Build
+        if: ${{ __RUN_BUILD__ }}
+        run: __BUILD_CMD__

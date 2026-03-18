@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [__DEFAULT_BRANCH__]
+  pull_request:
+    branches: [__DEFAULT_BRANCH__]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "__PYTHON_VERSION__"
+          cache: "__CACHE__"
+
+      - name: Install
+        run: __INSTALL_CMD__
+
+      - name: Lint
+        if: ${{ __RUN_LINT__ }}
+        run: __LINT_CMD__
+
+      - name: Typecheck
+        if: ${{ __RUN_TYPECHECK__ }}
+        run: __TYPECHECK_CMD__
+
+      - name: Test
+        if: ${{ __RUN_TEST__ }}
+        run: __TEST_CMD__
