@@ -1,70 +1,72 @@
 # Issue Quality Rubric
 
-Score every draft against this rubric before posting.
+Score every draft before posting. Use 0–2 per category (10+ points = acceptable; 12+ = good).
 
-## 1. Executability
-A good issue tells a worker exactly what to do next.
+---
 
-Pass when:
-- the problem is concrete
-- the desired outcome is observable
-- the issue is not an umbrella or brainstorming note
-- the worker can start from the body without asking for basics
+## 1. Scope clarity
+- 0 = broad / mushy / multi-project
+- 1 = mostly scoped but still leaks
+- 2 = atomic and mergeable in one PR
 
-Fail examples:
-- "Investigate auth problems"
-- "Improve performance"
-- "Clean up the API layer"
+## 2. Codebase grounding
+- 0 = generic, no paths
+- 1 = mentions areas loosely
+- 2 = exact files / modules / workflows named
 
-## 2. Scope control
-Pass when:
-- the issue can plausibly ship as one PR
-- non-goals are explicit
-- hidden migrations or follow-up work are called out separately
+## 3. Acceptance criteria
+- 0 = subjective or vague
+- 1 = partly testable
+- 2 = crisp, observable, complete checkboxes
 
-Fail examples:
-- bug fix + refactor + migration + docs rewrite in one issue
-- "while you're here" scope creep
+## 4. Verification
+- 0 = missing
+- 1 = generic commands
+- 2 = repo-real commands with expected outcome
 
-## 3. Code awareness
-Pass when:
-- the issue names real files, modules, commands, workflows, or tests
-- it reflects how the repository is actually structured
+## 5. Constraint handling
+- 0 = ignores architecture / compatibility limits
+- 1 = partial
+- 2 = explicit and useful non-goals / constraints
 
-Fail examples:
-- generic references like "backend", "frontend", "the service layer"
+## 6. Handoff quality
+- 0 = worker will ask follow-ups immediately
+- 1 = mostly self-sufficient
+- 2 = implementation-ready, no basic follow-ups needed
 
-## 4. Validation quality
-Pass when:
-- acceptance criteria are checkable
-- verification commands are real for the repo
-- tests or checks are mentioned explicitly
+---
 
-Fail examples:
-- "works correctly"
-- "looks good"
-- no commands, no checks, no success definition
+## Blocking failures (automatic lint rejection)
 
-## 5. Adjacency handling
-Pass when:
-- duplicates were checked
-- related PRs/issues are linked
-- overlap is resolved with boundaries, not ignored
+Any of these fails the issue regardless of score:
+- missing `Affected Areas`
+- missing `Non-goals`
+- missing `Acceptance Criteria`
+- missing `Verification`
+- zero checkboxes in acceptance criteria
+- no file paths or modules named
+- body < 3 meaningful sentences
+- obvious duplicate exists and is not addressed
+- title is vague: "fix stuff", "cleanup", "improve"
 
-## 6. Honest uncertainty
-Pass when:
-- assumptions are labeled
-- unresolved questions are explicit and minimal
+---
 
-Fail examples:
-- stating guesses as facts
-- hiding uncertainty in vague language
+## Complexity heuristic
 
-## Hard fail conditions
+| Label  | Signals |
+|--------|---------|
+| small  | 1–2 files, no schema changes, <2h, existing tests cover it |
+| medium | 3–7 files, possible API/schema changes, new tests needed |
+| large  | cross-cutting, >7 files, migration, new subsystem, agent needs to plan first |
 
-Do **not** post if any of these is true:
-- no `Affected Areas`
-- no `Acceptance Criteria`
-- no `Verification`
-- obvious duplicate exists
-- the body depends on context that is not written down
+---
+
+## Common vague verbs to replace
+
+| Vague | Better |
+|-------|--------|
+| clean up | extract / remove / rename / consolidate |
+| improve | reduce latency from X to Y / increase coverage to 80% |
+| support | add endpoint / add field / add flag |
+| handle properly | return 400 when / log and retry when / skip when |
+| make better | shrink bundle by / reduce queries from N to 1 |

@@ -84,7 +84,7 @@ You are the Explore Agent. Your ONLY job is to collect raw research data and sav
 
 ### 1. Run the Python research script
 ```bash
-python3 ~/clawd/skills/last30days/scripts/last30days.py "[TOPIC]" --emit=compact 2>&1
+python3 ~/.openclaw/skills/last30days/scripts/last30days.py "[TOPIC]" --emit=compact 2>&1
 ```
 Save the FULL output. Note the mode (both/reddit-only/x-only/web-only).
 

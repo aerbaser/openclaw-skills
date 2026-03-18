@@ -424,7 +424,7 @@ sessions_spawn({
 ```javascript
 sessions_spawn({
   task: `Забронировать 1 корт в Blue Padel на 8 февраля, 15:00.
-ЧИТАЙ SKILL.md: ~/clawd/skills/racket-id-booking/SKILL.md
+ЧИТАЙ SKILL.md: ~/.openclaw/skills/racket-id-booking/SKILL.md
 Используй ТОЛЬКО browser tool с profile="openclaw". НЕ пиши скрипты!
 После бронирования отправь ссылку.`,
   model: "anthropic/claude-sonnet-4-5",
@@ -436,7 +436,7 @@ sessions_spawn({
 ```javascript
 sessions_spawn({
   task: `Забронировать 3 корта в Blue Padel на 8 февраля, 15:00, 120 мин.
-ЧИТАЙ SKILL.md: ~/clawd/skills/racket-id-booking/SKILL.md
+ЧИТАЙ SKILL.md: ~/.openclaw/skills/racket-id-booking/SKILL.md
 Используй ТОЛЬКО browser tool. Для нескольких кортов — чекбокс + popup "Додати".
 После бронирования отправь ссылку.`,
   model: "anthropic/claude-sonnet-4-5",
@@ -448,7 +448,7 @@ sessions_spawn({
 ```javascript
 sessions_spawn({
   task: `Отменить бронирование на 8 февраля в Blue Padel.
-ЧИТАЙ SKILL.md: ~/clawd/skills/racket-id-booking/SKILL.md
+ЧИТАЙ SKILL.md: ~/.openclaw/skills/racket-id-booking/SKILL.md
 Используй ТОЛЬКО browser tool.`,
   model: "anthropic/claude-sonnet-4-5",
   label: "padel-cancel"

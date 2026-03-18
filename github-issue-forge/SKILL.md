@@ -1,25 +1,23 @@
 ---
 name: github-issue-forge
-description: Use when creating or rewriting GitHub issues from repository analysis. Inspect code, tests, docs, related issues and PRs, then produce execution-ready issues with scope, constraints, verification steps, and acceptance criteria so downstream coding agents can implement without ambiguity.
-version: 1.0.0
-homepage: https://github.com/ComposioHQ/agent-orchestrator
-author: OpenAI
+description: Draft or rewrite GitHub issues from real repository analysis. Use when creating feature, bug, refactor, migration, CI, or tech-debt issues that an implementation agent should be able to execute directly without guessing scope, code paths, constraints, or verification commands.
 license: MIT
-metadata: {"openclaw":{"emoji":"🧩","requires":{"bins":["git","gh","rg","python3"]},"homepage":"https://github.com/ComposioHQ/agent-orchestrator"}}
+compatibility: openclaw; gh, git, python3 recommended; works best inside a checked-out repository with local read access and optional GitHub CLI auth for issue/PR overlap search.
+metadata:
+  author: OpenAI
+  version: "3.1.0"
+  tags:
+    - github
+    - issues
+    - triage
+    - planning
+    - agent-handoff
 ---
 
 # GitHub Issue Forge
 
-Create GitHub issues that are good enough for a coding agent to execute directly, not just good enough for a human to "understand later."
-
-## When to use
-
-Use this skill when the user wants to:
-- create a new GitHub issue from codebase analysis
-- rewrite a vague issue into an implementation-ready issue
-- triage a bug, refactor, feature, migration, or CI task into a scoped issue
-- check whether an issue is a duplicate, overlaps another issue/PR, or should be split
-- produce issues specifically intended for downstream agent execution
+Create GitHub issues that are good enough for a coding agent to execute directly —
+not just good enough for a human to "understand later."
 
 ## Read first
 
@@ -28,44 +26,103 @@ Before drafting the issue, read:
 - `{baseDir}/references/ISSUE_QUALITY_RUBRIC.md`
 - `{baseDir}/references/SEARCH_PATTERNS.md`
 
+---
+
 ## Core workflow
 
-1. **Scan the repository first**
-   - Run `python3 {baseDir}/scripts/repo_scan.py --format pretty`.
-   - If the task already names a subsystem, rerun with `--focus "<keywords>"`.
-   - Extract concrete paths, commands, docs, tests, manifests, and likely touch points.
+### 1. Scan the repository first
 
-2. **Check GitHub for overlap before writing**
-   - Search issues and PRs with `gh issue list --state all --search ...` and `gh pr list --state all --search ...`.
-   - Do not create a new issue if an open issue or active PR already covers the same work.
-   - If there is overlap, either:
-     - comment on the existing issue/PR, or
-     - create a narrower follow-up issue with explicit boundaries.
+```bash
+python3 {baseDir}/scripts/repo_scan.py --repo-root . --format markdown
+```
 
-3. **Inspect the implementation area**
-   - Read the real files, not just directory names.
-   - Identify the current behavior, missing behavior, architecture constraints, and test surface.
-   - Prefer exact file paths and command lines over vague descriptions.
+Focused scan (when the task names a subsystem):
+```bash
+python3 {baseDir}/scripts/repo_scan.py --repo-root . --focus "auth session refresh" --format markdown
+```
 
-4. **Decide the issue shape**
-   - Keep one executable problem per issue.
-   - Split discovery work, migrations, and follow-up cleanups into separate issues if they can be merged independently.
-   - Put non-goals in the issue body so the worker does not expand scope.
+Extract concrete paths, commands, docs, tests, manifests, and likely touch points.
+Read the real files — not just directory names.
 
-5. **Draft the issue body with the template**
-   - Use the exact section structure from `ISSUE_BODY_TEMPLATE.md`.
-   - Make the body self-sufficient: include context the worker would otherwise need to rediscover.
-   - Front-load the problem, desired outcome, affected areas, constraints, and verification.
+### 2. Check GitHub for overlap before writing
 
-6. **Lint the issue before posting**
-   - Save draft body to a temporary markdown file.
-   - Run `python3 {baseDir}/scripts/issue_lint.py --title "<title>" --body-file /tmp/issue.md --format pretty`.
-   - Fix every blocking error before creating the issue.
+```bash
+gh issue list --state all --search "auth session refresh in:title,body sort:updated-desc"
+gh pr list --state all --search "auth session refresh sort:updated-desc"
+```
 
-7. **Create the issue**
-   - Prefer `gh issue create --title "<title>" --body-file /tmp/issue.md`.
-   - Add labels and assignee when you have enough signal.
-   - If the user asked only for a draft, return the final title, labels, and body instead of posting.
+Do not create a new issue if an open issue or active PR already covers the same work.
+If there is overlap: comment on the existing issue/PR, or create a narrower follow-up with explicit boundaries.
+
+See `{baseDir}/references/SEARCH_PATTERNS.md` for full overlap search strategy.
+
+### 3. Inspect the implementation area
+
+- Read the real files, not just directory names.
+- Identify the current behavior, missing behavior, architecture constraints, and test surface.
+- Prefer exact file paths and command lines over vague descriptions.
+
+### 4. Decide the issue shape
+
+- Keep one executable problem per issue.
+- Split discovery work, migrations, and follow-up cleanups into separate issues if they can be merged independently.
+- Put non-goals in the issue body so the worker does not expand scope.
+
+### 5. Draft with the canonical template
+
+Use the exact section order from `{baseDir}/references/ISSUE_BODY_TEMPLATE.md`.
+Make the body self-sufficient: include context the worker would otherwise need to rediscover.
+Front-load the problem, desired outcome, affected areas, constraints, and verification.
+
+### 6. Lint before posting
+
+```bash
+python3 {baseDir}/scripts/issue_lint.py \
+  --title "feat: harden session refresh path" \
+  --body-file /tmp/issue.md
+```
+
+Fix every blocking error before creating the issue.
+
+### 7. Create the issue
+
+```bash
+gh issue create \
+  --title "feat: harden session refresh path" \
+  --label "enhancement" \
+  --body-file /tmp/issue.md
+```
+
+Add labels and assignee when you have enough signal.
+If the user asked only for a draft, return the final title, labels, and body instead of posting.
+
+---
+
+## Creation pattern (full example)
+
+```bash
+# 1 — Scan
+python3 {baseDir}/scripts/repo_scan.py --focus "auth login session" --format markdown
+
+# 2 — Check overlap
+gh issue list --state all --search "auth login session in:title,body sort:updated-desc"
+gh pr list --state all --search "auth login session sort:updated-desc"
+
+# 3 — Draft body using ISSUE_BODY_TEMPLATE.md, save to /tmp/issue.md
+
+# 4 — Lint
+python3 {baseDir}/scripts/issue_lint.py \
+  --title "feat: harden session refresh path" \
+  --body-file /tmp/issue.md
+
+# 5 — Post
+gh issue create \
+  --title "feat: harden session refresh path" \
+  --label "enhancement,auth" \
+  --body-file /tmp/issue.md
+```
+
+---
 
 ## Non-negotiable rules
 
@@ -88,7 +145,9 @@ Before drafting the issue, read:
    Include the exact commands the worker should run for local validation and the expected high-level outcome.
 
 7. **Call out scope limits.**
-   A strong issue tells the agent what not to touch.
+   A strong issue tells the agent what NOT to touch.
+
+---
 
 ## Good labels
 
@@ -101,27 +160,17 @@ Use only labels that materially help routing:
 - `tech-debt`
 - `blocked`
 - `breaking-change`
-- stack or area labels already used by the repo
+- stack or area labels already used by the repo (check with `gh label list`)
 
-## Creation pattern
-
-```bash
-python3 {baseDir}/scripts/repo_scan.py --focus "auth login session" --format pretty
-gh issue list --state all --search "auth login session in:title,body sort:updated-desc"
-gh pr list --state all --search "auth login session sort:updated-desc"
-
-# Draft the body in /tmp/issue.md using the skill template, then lint it
-python3 {baseDir}/scripts/issue_lint.py --title "feat: harden session refresh path" --body-file /tmp/issue.md --format pretty
-
-gh issue create   --title "feat: harden session refresh path"   --label "enhancement,auth"   --body-file /tmp/issue.md
-```
+---
 
 ## Final check before posting
 
 Do not create the issue until all answers are "yes":
-- Is the scope atomic?
-- Does the body name the real code paths?
-- Are duplicates and related PRs linked?
-- Are non-goals explicit?
-- Are acceptance criteria testable?
-- Are verification commands real for this repository?
+- [ ] Is the scope atomic (one merge = one problem solved)?
+- [ ] Does the body name the real code paths?
+- [ ] Are duplicates and related PRs linked?
+- [ ] Are non-goals explicit?
+- [ ] Are acceptance criteria testable (checkboxes with observable outcomes)?
+- [ ] Are verification commands real for this repository (not invented)?
+- [ ] Is the Agent context section filled in (complexity, model hint, target branch)?

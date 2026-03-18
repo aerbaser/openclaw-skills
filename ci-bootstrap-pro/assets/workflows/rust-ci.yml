@@ -2,10 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [__DEFAULT_BRANCH__]
+    branches: [main]
   pull_request:
-    branches: [__DEFAULT_BRANCH__]
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,30 +14,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  rust:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      # Hardened repos should pin third-party actions to a full commit SHA.
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Fetch dependencies
-        run: cargo fetch
-
-      - name: Format check
-        run: cargo fmt --all --check
-
-      - name: Lint
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Test
-        run: cargo test --all-features
-
-      - name: Build
-        run: cargo build --all-features --locked
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all-features

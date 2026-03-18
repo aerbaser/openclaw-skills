@@ -1,0 +1,12 @@
+# Default owners
+* @YOUR_TEAM
+
+# Workflows are sensitive
+/.github/workflows/ @YOUR_TEAM
+
+# Infrastructure
+/infra/ @YOUR_TEAM
+/ops/ @YOUR_TEAM
+
+# Application code
+/src/ @YOUR_TEAM

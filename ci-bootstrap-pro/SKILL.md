@@ -1,11 +1,16 @@
 ---
 name: ci-bootstrap-pro
-description: Use when adding or upgrading CI in a repository. Detect the stack, choose repository-native build and test commands, and produce secure GitHub Actions workflows with minimal token permissions, concurrency control, caching, realistic validation, and clean separation between untrusted PR CI and privileged deployment flows.
-version: 1.0.0
-homepage: https://docs.github.com/actions
-author: OpenAI
+description: Add or upgrade GitHub Actions CI from actual repository tooling. Use when a repo needs secure, fast, maintainable CI with correct install commands, minimal token permissions, safe pull_request handling, concurrency cancellation, caching, and repository-native lint/test/build steps.
 license: MIT
-metadata: {"openclaw":{"emoji":"🛠️","requires":{"bins":["git","gh","rg","python3"]},"homepage":"https://docs.github.com/actions"}}
+compatibility: openclaw; gh optional; git and python3 recommended; designed for repositories using GitHub Actions under .github/workflows.
+metadata:
+  author: OpenAI
+  version: "3.1.0"
+  tags:
+    - ci
+    - github-actions
+    - devops
+    - automation
 ---
 
 # CI Bootstrap Pro
@@ -20,61 +25,88 @@ Use this skill when the user wants to:
 - normalize CI across multiple services or packages
 - add lint, typecheck, test, build, artifact, or release gates
 - debug why an existing workflow is slow, unsafe, or unreliable
+- add CI for Solidity / smart contracts / Hardhat / Foundry
+- add CI for React / Vite / Next.js
 
 ## Read first
 
 Before editing workflows, read:
 - `{baseDir}/references/CI_PLAYBOOK.md`
 - `{baseDir}/references/SECURITY_CHECKLIST.md`
+- `{baseDir}/references/STACK_COMMAND_MATRIX.md` (when choosing commands)
 
-Use templates from:
+Use starter templates from:
 - `{baseDir}/assets/workflows/`
+
+---
 
 ## Core workflow
 
-1. **Detect the stack**
-   - Run `python3 {baseDir}/scripts/ci_detect.py --format pretty`.
-   - Confirm the package manager, language runtime, lockfiles, workspace shape, and likely commands.
-   - Read the actual manifests and scripts before choosing commands.
+### 1. Detect the actual stack
 
-2. **Use repository-native commands**
-   - Reuse existing commands from `package.json`, `Makefile`, `justfile`, `pyproject.toml`, `cargo`, Gradle, Maven, or dotnet solution files.
-   - Prefer deterministic installs:
-     - `npm ci`
-     - `pnpm install --frozen-lockfile`
-     - `yarn --immutable`
-     - `uv sync --frozen`
-     - `poetry install --no-interaction --sync`
-     - language-equivalent frozen install modes
+```bash
+python3 {baseDir}/scripts/ci_detect.py --repo-root .
+```
 
-3. **Design the workflow shape**
-   - Default to `push` + `pull_request` + optional `workflow_dispatch`.
-   - Add top-level `permissions` with minimum needed access.
-   - Add top-level `concurrency` so superseded runs are cancelled.
-   - Keep fast PR gates in the default CI path.
-   - Move slow integration, E2E, matrix explosion, or release work into separate workflows when needed.
+Confirm: package manager, language runtime, lockfiles, workspace shape, and likely commands.
+Read the actual manifests and scripts before choosing commands.
 
-4. **Choose the right template**
-   - Start from the closest template in `assets/workflows/`.
-   - Replace placeholders with real versions and commands from the repo.
-   - Keep the workflow small and readable; split only when the repository complexity justifies it.
+### 2. Use repository-native commands only
 
-5. **Respect trust boundaries**
-   - Do not use `pull_request_target` to build or execute untrusted pull request code.
-   - Use plain `pull_request` for test/build on incoming code.
-   - Keep privileged publish/deploy logic in protected branch workflows, protected environments, or separately-invoked workflows.
+Reuse existing commands from `package.json`, `Makefile`, `justfile`, `pyproject.toml`, `cargo`, Gradle, Maven, or dotnet solution files.
 
-6. **Optimize for signal, not ceremony**
-   - Run lint/typecheck/test/build only if the repo actually has them.
-   - Use setup-action caching when supported.
-   - Add artifacts only when they help debug failures or are part of release output.
-   - Add a matrix only if the project claims multi-version or multi-OS support.
+Prefer deterministic installs:
+- `npm ci`
+- `pnpm install --frozen-lockfile`
+- `yarn --immutable`
+- `uv sync --frozen`
+- `poetry install --no-interaction --sync`
 
-7. **Validate locally before declaring success**
-   - Run the same commands outside CI when possible.
-   - Check YAML structure.
-   - Ensure every referenced script, file, and command exists.
-   - If the repo already has CI, compare behavior and avoid duplicate or conflicting workflows.
+### 3. Design the workflow shape
+
+- Default to `push` + `pull_request` + optional `workflow_dispatch`
+- Add top-level `permissions` with minimum needed access
+- Add top-level `concurrency` so superseded runs are cancelled
+- Keep fast PR gates in the default CI path
+- Move slow integration, E2E, matrix explosion, or release work into separate workflows
+
+### 4. Choose the right template
+
+Start from the closest template in `assets/workflows/`.
+Replace placeholders with real versions and commands from the repo.
+Keep the workflow small and readable; split only when repository complexity justifies it.
+
+Templates available:
+- `node-ci.yml`, `react-ci.yml`
+- `python-ci.yml`
+- `go-ci.yml`
+- `rust-ci.yml`
+- `java-maven-ci.yml`, `java-gradle-ci.yml`
+- `dotnet-ci.yml`
+- `ruby-ci.yml`
+- `solidity-hardhat-ci.yml`, `solidity-foundry-ci.yml`
+
+### 5. Respect trust boundaries
+
+- Do not use `pull_request_target` to build or execute untrusted pull request code
+- Use plain `pull_request` for test/build on incoming code
+- Keep privileged publish/deploy logic in protected branch workflows or separately-invoked workflows
+
+### 6. Optimize for signal, not ceremony
+
+- Run lint/typecheck/test/build only if the repo actually has them
+- Use setup-action caching when supported
+- Add artifacts only when they help debug failures or are part of release output
+- Add a matrix only if the project claims multi-version or multi-OS support
+
+### 7. Validate locally before declaring success
+
+- Run the same commands outside CI when possible
+- Check YAML structure
+- Ensure every referenced script, file, and command exists
+- If the repo already has CI, compare behavior and avoid duplicate or conflicting workflows
+
+---
 
 ## Non-negotiable rules
 
@@ -94,10 +126,12 @@ Use templates from:
    Build and test untrusted code with low privilege. Publish and deploy only from trusted refs or protected environments.
 
 6. **Prefer first-party setup actions and built-in caching paths.**
-   Use stack-native setup actions where available. Only pull in third-party actions when the repository needs them and the value is clear.
+   Use stack-native setup actions where available. Only pull in third-party actions when the value is clear.
 
 7. **Document why the workflow exists.**
    Use clear job names and small comments around non-obvious decisions.
+
+---
 
 ## Standard build order
 
@@ -109,31 +143,37 @@ Default order for most repositories:
 5. build
 6. upload debug artifacts only if useful
 
-## Common files
+---
 
-Typical output files:
-- `.github/workflows/ci.yml`
-- `.github/workflows/release.yml` only if the user asked for publishing/deploy
-- `.github/workflows/nightly.yml` only for slow or flaky long-running suites
+## Common output files
+
+- `.github/workflows/ci.yml` — always
+- `.github/workflows/release.yml` — only if the user asked for publishing/deploy
+- `.github/workflows/nightly.yml` — only for slow or flaky long-running suites
+
+---
 
 ## Creation pattern
 
 ```bash
-python3 {baseDir}/scripts/ci_detect.py --format pretty
+# 1 — Detect stack
+python3 {baseDir}/scripts/ci_detect.py --repo-root .
 
-# Read the nearest template in {baseDir}/assets/workflows/
-# Render the template into .github/workflows/ci.yml
-# Replace placeholders with repo-real values and commands
+# 2 — Pick closest template from {baseDir}/assets/workflows/
+# 3 — Render into .github/workflows/ci.yml with repo-real values
 
+# 4 — Verify
 git diff -- .github/workflows
 ```
+
+---
 
 ## Final check before completion
 
 Do not stop until all answers are "yes":
-- Does every command exist in this repository?
-- Are permissions minimal?
-- Does concurrency cancel stale runs?
-- Is PR CI safe for forks?
-- Is caching configured through the proper setup action when supported?
-- Would a new maintainer understand this workflow in one read?
+- [ ] Does every command exist in this repository?
+- [ ] Are permissions minimal?
+- [ ] Does concurrency cancel stale runs?
+- [ ] Is PR CI safe for forks (no `pull_request_target` with untrusted code)?
+- [ ] Is caching configured through the proper setup action when supported?
+- [ ] Would a new maintainer understand this workflow in one read?
