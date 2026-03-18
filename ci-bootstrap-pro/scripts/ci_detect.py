@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,11 +17,8 @@ except Exception:  # pragma: no cover
 def run(cmd: list[str], cwd: Path | None = None) -> str:
     try:
         proc = subprocess.run(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            capture_output=True,
-            text=True,
-            check=True,
+            cmd, cwd=str(cwd) if cwd else None,
+            capture_output=True, text=True, check=True,
         )
         return proc.stdout.strip()
     except Exception:
@@ -58,15 +54,17 @@ def detect_node(root: Path) -> dict | None:
         return None
     data = read_json(package)
     scripts = data.get("scripts", {}) if isinstance(data.get("scripts"), dict) else {}
+    deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+
     pm = "npm"
     if (root / "pnpm-lock.yaml").exists():
         pm = "pnpm"
     elif (root / "yarn.lock").exists():
         pm = "yarn"
-    elif (root / "package-lock.json").exists():
-        pm = "npm"
     elif (root / "bun.lockb").exists() or (root / "bun.lock").exists():
         pm = "bun"
+    elif (root / "package-lock.json").exists():
+        pm = "npm"
 
     install = {
         "npm": "npm ci",
@@ -76,22 +74,79 @@ def detect_node(root: Path) -> dict | None:
     }[pm]
 
     commands = {}
-    for key in ["lint", "typecheck", "check", "test", "test:ci", "build"]:
+    for key in ["lint", "typecheck", "check", "build"]:
         if key in scripts:
-            commands[key] = f"{pm} run {key}" if key not in ("test",) or pm != "npm" else "npm test -- --runInBand"
+            commands[key] = f"{pm} run {key}"
     if "test:ci" in scripts:
         commands["test"] = f"{pm} run test:ci"
     elif "test" in scripts:
-        commands["test"] = f"{pm} run test"
+        commands["test"] = "npm test -- --runInBand" if pm == "npm" else f"{pm} run test"
 
-    return {
+    # React detection
+    is_react = "react" in deps or "react-dom" in deps
+    has_vitest = "vitest" in deps
+
+    # Solidity detection
+    has_hardhat = "hardhat" in deps
+    has_foundry = (root / "foundry.toml").exists()
+
+    # Choose template
+    if has_hardhat:
+        template = "assets/workflows/solidity-hardhat-ci.yml"
+    elif is_react:
+        template = "assets/workflows/react-ci.yml"
+        if has_vitest:
+            commands["test"] = f"{pm} run test" if "test" in scripts else "npx vitest run"
+        if "test" in scripts and pm == "npm" and not has_vitest:
+            commands["test"] = "npm test -- --runInBand"
+    else:
+        template = "assets/workflows/node-ci.yml"
+
+    result = {
         "ecosystem": "node",
         "package_manager": pm,
         "install": install,
         "scripts": scripts,
         "commands": commands,
-        "template": "assets/workflows/node-ci.yml",
+        "template": template,
     }
+    if is_react:
+        result["react"] = True
+        result["bundler"] = "vite" if ("vite" in deps or "@vitejs/plugin-react" in deps) else "cra"
+    if has_hardhat:
+        result["solidity_toolchain"] = "hardhat"
+
+    return result
+
+
+def detect_foundry(root: Path) -> dict | None:
+    """Foundry-only Solidity repos (no package.json or no hardhat dep)."""
+    if (root / "foundry.toml").exists():
+        return {
+            "ecosystem": "solidity-foundry",
+            "package_manager": "forge",
+            "install": "foundry-rs/foundry-toolchain@v1",
+            "commands": {
+                "fmt": "forge fmt --check",
+                "build": "forge build --sizes",
+                "test": "forge test -vvv",
+                "coverage": "forge coverage --report summary",
+            },
+            "template": "assets/workflows/solidity-foundry-ci.yml",
+        }
+    # Check for .sol files without hardhat
+    if any(root.glob("src/**/*.sol")) and not (root / "package.json").exists():
+        return {
+            "ecosystem": "solidity-foundry",
+            "package_manager": "forge",
+            "install": "foundry-rs/foundry-toolchain@v1",
+            "commands": {
+                "build": "forge build --sizes",
+                "test": "forge test -vvv",
+            },
+            "template": "assets/workflows/solidity-foundry-ci.yml",
+        }
+    return None
 
 
 def detect_python(root: Path) -> dict | None:
@@ -122,9 +177,9 @@ def detect_python(root: Path) -> dict | None:
         commands["lint"] = "ruff check ."
     if "mypy" in tool or (root / "mypy.ini").exists() or (root / ".mypy.ini").exists():
         commands["typecheck"] = "mypy ."
-    if (root / "pytest.ini").exists() or (root / "conftest.py").exists() or list(root.glob("tests")):
+    if (root / "pytest.ini").exists() or (root / "conftest.py").exists() or (root / "tests").exists():
         commands["test"] = "pytest"
-    if not commands:
+    if "test" not in commands:
         commands["test"] = "pytest"
 
     return {
@@ -214,7 +269,9 @@ def detect_dotnet(root: Path) -> dict | None:
 def detect_ruby(root: Path) -> dict | None:
     if not (root / "Gemfile").exists():
         return None
-    cmds = {"test": "bundle exec rspec"} if (root / "spec").exists() else {}
+    cmds = {}
+    if (root / "spec").exists():
+        cmds["test"] = "bundle exec rspec"
     if (root / ".rubocop.yml").exists():
         cmds["lint"] = "bundle exec rubocop"
     if "test" not in cmds:
@@ -230,15 +287,21 @@ def detect_ruby(root: Path) -> dict | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Detect stack and suggest GitHub Actions CI commands/templates.")
-    parser.add_argument("--root", default=".", help="Repository root or child path.")
-    parser.add_argument("--format", choices=["json", "pretty"], default="json")
+    parser.add_argument("--repo-root", "--root", default=".", help="Repository root or child path.")
+    parser.add_argument("--format", choices=["json", "pretty", "markdown"], default="json")
     args = parser.parse_args()
 
-    root = repo_root(Path(args.root).resolve())
+    root = repo_root(Path(args.repo_root).resolve())
     detections = []
-    for detector in [detect_node, detect_python, detect_go, detect_rust, detect_java, detect_dotnet, detect_ruby]:
+    for detector in [detect_node, detect_foundry, detect_python, detect_go,
+                     detect_rust, detect_java, detect_dotnet, detect_ruby]:
         result = detector(root)
         if result:
+            # Skip foundry if already got node+hardhat
+            if result["ecosystem"] == "solidity-foundry":
+                already_hardhat = any(d.get("solidity_toolchain") == "hardhat" for d in detections)
+                if already_hardhat:
+                    continue
             detections.append(result)
 
     default_branch = run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], cwd=root).removeprefix("refs/remotes/origin/")
@@ -263,7 +326,7 @@ def main() -> int:
     if args.format == "json":
         json.dump(output, sys.stdout, indent=2)
         sys.stdout.write("\n")
-    else:
+    elif args.format in ("pretty", "markdown"):
         print(f"Repo root:         {output['repo_root']}")
         print(f"Default branch:    {output['default_branch']}")
         print(f"Monorepo:          {output['monorepo']}")

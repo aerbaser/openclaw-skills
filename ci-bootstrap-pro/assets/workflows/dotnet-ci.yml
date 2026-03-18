@@ -2,10 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [__DEFAULT_BRANCH__]
+    branches: [main]
   pull_request:
-    branches: [__DEFAULT_BRANCH__]
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,23 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  dotnet:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "__DOTNET_VERSION__"
-
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --no-restore
-
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
+          dotnet-version: "8.0.x"
+      - run: dotnet restore
+      - run: dotnet build --no-restore
+      - run: dotnet test --no-build

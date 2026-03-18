@@ -1,0 +1,57 @@
+[
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Defect"
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "Product or engineering improvement"
+  },
+  {
+    "name": "task",
+    "color": "7057ff",
+    "description": "Execution task"
+  },
+  {
+    "name": "tech-debt",
+    "color": "5319e7",
+    "description": "Cleanup or refactor work"
+  },
+  {
+    "name": "ci",
+    "color": "1d76db",
+    "description": "Continuous integration and automation"
+  },
+  {
+    "name": "security",
+    "color": "b60205",
+    "description": "Security work"
+  },
+  {
+    "name": "docs",
+    "color": "0e8a16",
+    "description": "Documentation"
+  },
+  {
+    "name": "blocked",
+    "color": "000000",
+    "description": "Cannot proceed"
+  },
+  {
+    "name": "priority:high",
+    "color": "d93f0b",
+    "description": "High priority"
+  },
+  {
+    "name": "priority:medium",
+    "color": "fbca04",
+    "description": "Medium priority"
+  },
+  {
+    "name": "priority:low",
+    "color": "c2e0c6",
+    "description": "Low priority"
+  }
+]

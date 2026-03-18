@@ -1,0 +1,6 @@
+# Protect critical automation
+.github/workflows/ @org/platform
+.github/ @org/platform
+
+# Default fallback
+* @org/core

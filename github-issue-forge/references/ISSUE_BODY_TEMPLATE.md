@@ -2,6 +2,8 @@
 
 Use this exact structure unless the repository already enforces a stronger local format.
 
+---
+
 ## Summary
 One short paragraph. State the work item in plain engineering language.
 
@@ -65,15 +67,19 @@ pnpm build
 
 Also add one sentence describing what "green" means for this issue.
 
-## Related Context
+## Agent Context
+- estimated complexity: small / medium / large
+- model hint: (e.g. sonnet, opus, codex)
+- target branch:
+- related sessions / PRs:
+- special constraints for the agent:
+
+## Related Issues / PRs / Docs
 Link anything adjacent:
 - related issues
 - closed issues
 - active PRs
-- docs
-- design notes
-- incidents
-- migrations
+- docs, design notes, incidents, migrations
 - code comments worth preserving
 
 If nothing relevant exists, say `None found after repo/GitHub search.`
