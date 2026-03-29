@@ -1,7 +1,7 @@
 ---
 name: intake-flow
-version: 1.0.0
-description: "Project intake flow: clarify → brief → route (research/brainstorm/work). Handles buttons: intake_research_brainstorm, intake_brainstorm, intake_work."
+version: 2.0.0
+description: "Project intake flow: clarify → brief → route (research/brainstorm/work). Handles buttons: intake_research_brainstorm, intake_brainstorm, intake_work. v8.2: canonical routing, outcome taxonomy, question minimization, full-solution defaults, gate defaults by route."
 triggers:
   - user brings new project idea or task
   - callback_data starts with "intake_"
@@ -10,7 +10,7 @@ metadata:
   { "openclaw": { "emoji": "🎯" } }
 ---
 
-# Intake Flow — Протокол приёма проекта
+# Intake Flow — Протокол приёма проекта (v8.2)
 
 ## Когда активировать
 
@@ -22,20 +22,50 @@ metadata:
 
 ---
 
+## ЧАСТЬ 0: Routing (обязательна перед A)
+
+До уточняющих вопросов — определи **outcome_type** и **route**:
+
+| Что пришло | outcome_type | route |
+|---|---|---|
+| стратегия, анализ, исследование | `strategy_doc` | `artifact_route` |
+| дизайн, UX, прототип | `design_pack` | `artifact_route` |
+| новое приложение / сайт | `website_release` / `app_release` | `build_route` |
+| фикс бага / улучшение существующего | `bugfix_release` | `build_route` |
+| аудит, ревью | `audit_pack` | `artifact_route` |
+| пост, тред, контент | `publish_asset` | `publish_route` |
+| инфра, деплой, сервис | `ops_change` | `ops_route` |
+| инцидент | `incident_recovery` | `incident_route` |
+| стратегия + реализация | `app_release` | `hybrid_route` |
+
+**Ambiguity threshold:** если route не ясен с уверенностью >70% → задай один уточняющий вопрос.
+
+**Full-solution default:** `full_solution: true`, `delivery_standard: "production_ready"`. MVP — только как internal milestone, не как финальный output.
+
+**Default gates по route:**
+- `build_route`: `[context-assimilation, code-review-gate, CI, finalize-outcome]`
+- `artifact_route`: `[context-assimilation, artifact-quality-gate, finalize-outcome]`
+- `publish_route`: `[artifact-quality-gate, finalize-outcome]`
+- `ops_route`: `[decision-gate, finalize-outcome]`
+- `incident_route`: `[decision-gate, finalize-outcome]`
+
+---
+
 ## ЧАСТЬ A: Первичный Intake (новая идея)
 
-### Шаг 1: Уточнения
+### Шаг 1: Уточнения (question minimization policy v8.2)
 
-Задай **3–5 вопросов в ОДНОМ сообщении**:
+- Задай **максимум 3 вопроса** в одном сообщении
+- Спрашивай только **архитектурное**: realtime vs polling, кто пользователи, где хостить
+- **НЕ спрашивать**: deadline (AO автономен), светлая/тёмная тема, "3 или 5 дней"
+- Если route = `artifact_route` → часто вопросы не нужны вовсе, иди к brief
 
 ```
 Уточни быстро:
 
-1. Цель — что должен делать результат?
-2. Стек / платформа (web, mobile, скрипт, bot, smart contract, ...)?
-3. MVP или полная реализация?
-4. Есть ли deadline / приоритет?
-5. Что уже есть / пробовали?
+1. [Только если route неясен] Цель — стратегия/дизайн или реализация?
+2. [Только для build_route] Новое с нуля или улучшение существующего?
+3. [Только для build_route] Realtime данные или polling достаточно?
 ```
 
 Адаптируй под контекст — не спрашивай очевидное.
@@ -220,11 +250,38 @@ json.dump(d, open('/home/aiadmin/clawd/memory/working-buffer.json','w'), indent=
 1. Прочитай brief из `~/clawd/memory/intake-brief-current.md`
 2. Собери всё: brief + research (если было) + brainstorm summary (если было)
 
+**[1.2] Создай task-ledger запись** (v8.2 canonical contract.json + status.json → INTAKE):
+
+Извлеки из brief: title, route, outcome_type, delivery_mode.
+**Defaults (v8.2):** `route=build_route`, `outcome=app_release`, `delivery_mode=repo_build`, `full_solution=true`.
+
+```bash
+TASK_OUT=$(node ~/clawd/scripts/task-store.js create \
+  --title "$(grep -m1 '^## Brief:' ~/clawd/memory/intake-brief-current.md | sed 's/## Brief: //')" \
+  --route build_route \
+  --outcome app_release)
+
+echo "$TASK_OUT"
+TASK_ID=$(echo "$TASK_OUT" | grep 'Task created:' | awk '{print $NF}')
+echo "Task ID: $TASK_ID"
+```
+
+Сразу переведи в `CONTRACT_LOCKED`:
+
+```bash
+node ~/clawd/scripts/task-store.js transition "$TASK_ID" CONTRACT_LOCKED \
+  --actor sokrat --reason "intake_work confirmed by user" \
+  --next_action "context assimilation"
+```
+
+Сохрани `TASK_ID` — передавай Платону, записывай в working-buffer.
+
 **Запиши задачу в INBOX Платона** (`~/.openclaw/shared-memory/communication/inbox_platon.md`):
 
 ```markdown
 ## [DATE] Новый проект от Юры
 
+**Task ID:** [TASK_ID] (task-ledger: ~/clawd/tasks/[TASK_ID]/)
 **Brief:**
 [Вставь brief]
 
@@ -237,12 +294,13 @@ json.dump(d, open('/home/aiadmin/clawd/memory/working-buffer.json','w'), indent=
 2. Разбей на GitHub Issues (в репо sokrat-core если не указано другое)
 3. Issues должны быть AO-ready: чёткий acceptance criteria, стек, тесты
 4. Вернись с планом и ссылками на Issues
+5. Сохрани plan.json в ~/clawd/tasks/[TASK_ID]/plan.json
 
 **Ожидаемый артефакт:** список GitHub Issues + порядок выполнения
 **Timeout:** 15 мин
 ```
 
-3. `sessions_send(label="platon", message="Inbox обновлён: новый проект для планирования")`
+3. `sessions_send(label="platon", message="Inbox обновлён: новый проект для планирования. Task ID: [TASK_ID]")`
 
 4. Обнови working-buffer:
 
@@ -253,14 +311,21 @@ d = json.load(open('/home/aiadmin/clawd/memory/working-buffer.json'))
 d['intake_state'] = {
     'active': True, 'flow': 'work', 'stage': 'waiting_platon',
     'brainstorm_waiting': False, 'intake_cron_id': None,
-    'brief_file': '~/clawd/memory/intake-brief-current.md'
+    'brief_file': '~/clawd/memory/intake-brief-current.md',
+    'task_id': '[TASK_ID]'
+}
+d['current_task'] = {
+    'id': '[TASK_ID]',
+    'title': '[TITLE FROM BRIEF]',
+    'status': 'CONTRACT_LOCKED',
+    'context': 'intake_work confirmed. Платон создаёт план.'
 }
 d['last_updated'] = datetime.datetime.now(datetime.UTC).isoformat()
 json.dump(d, open('/home/aiadmin/clawd/memory/working-buffer.json','w'), indent=2, ensure_ascii=False)
 "
 ```
 
-5. Сообщи Юре: "Передал Платону. Он создаст план и Issues. AO подхватит автоматически. Вернусь со статусом через 15 мин."
+5. Сообщи Юре: "Создал task `[TASK_ID]` (CONTRACT_LOCKED). Передал Платону. Он создаст план и Issues. AO подхватит автоматически. Вернусь со статусом через 15 мин."
 
 ---
 

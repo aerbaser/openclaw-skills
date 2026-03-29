@@ -1,0 +1,21 @@
+schema_version: '1.0'
+profile_name: serverless-edge
+environment_class: serverless
+deploy_primitive: version_publish_and_alias_switch
+rollback_primitive: alias_revert_or_previous_version_activation
+default_promotion_path:
+- preview
+- prod
+staging_supported: true
+release_unit: function_version_or_edge_bundle
+rollback_unit: alias_or_previous_version
+health_sources:
+- invocation checks
+- endpoint health
+- error metrics
+smoke_categories:
+- reachability
+- version
+- critical path
+- cold start sanity
+notes: Use for functions, workers, edge handlers and similar platforms.

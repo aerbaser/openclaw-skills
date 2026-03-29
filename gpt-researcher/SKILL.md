@@ -11,179 +11,212 @@ description: Deep web research via GPT Researcher. Use when you need comprehensi
 Agent (Аристотель)
   → HTTP POST localhost:8000/report/
     → GPT Researcher (FastAPI, uvicorn)
-      → codex-proxy (localhost:8016)
-        → Codex CLI → ChatGPT Pro (gpt-5.4)
-      → DuckDuckGo (search, no API key)
-      → HuggingFace embeddings (local, sentence-transformers/all-MiniLM-L6-v2)
+      → codex-proxy (localhost:8016) → ChatGPT Pro (gpt-5.4, reasoning=high)
+      → Tavily/Serper/ArXiv/PubMed/SemanticScholar (search)
+      → HuggingFace embeddings (BAAI/bge-large-en-v1.5, local)
 ```
 
 ## Services (systemd user)
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| `codex-proxy.service` | 8016 | Translates OpenAI API → Codex CLI → ChatGPT Pro |
-| `gpt-researcher.service` | 8000 | GPT Researcher HTTP server + Web UI |
+| Service | Port |
+|---------|------|
+| `codex-proxy.service` | 8016 |
+| `gpt-researcher.service` | 8000 |
 
-Check status: `systemctl --user status codex-proxy gpt-researcher`
+Check: `systemctl --user status codex-proxy gpt-researcher`
 
-## Quick Research (single report)
+---
+
+## Understanding User Intent (CRITICAL)
+
+Users write in Russian or mixed language. Parse their request into 5 dimensions:
+
+### 1. Research Type (preset)
+
+| Пользователь пишет | report_type | Время |
+|---------------------|-------------|-------|
+| "ресёрч", "исследование", "отчёт", "разберись", "проанализируй" | `research_report` | 6-8 мин |
+| "глубокий ресёрч", "детальный", "подробный", "копай глубоко" | `detailed_report` | 15-25 мин |
+| "быстрый ресёрч", "кратко", "обзор", "overview" | `research_report` (reduced params) | 3-4 мин |
+| "найди источники", "собери ссылки", "что пишут про" | `resource_report` | 4-5 мин |
+
+### 2. Depth / Source Count
+
+| User says | max_search_results | max_subtopics | max_urls_to_scrape |
+|-----------|-------------------|--------------|-------------------|
+| nothing (default) | 5 | 3 | 12 |
+| "20 источников" | 5 | 4 | 20 |
+| "50 источников" | 10 | 5 | 50 |
+| "100 источников" | 15 | 7 | 100 |
+| "как можно больше" | 15 | 10 | 100 |
+
+### 3. Domain Preferences (query_domains)
+
+Restricts search to ONLY specified domains. Use when user asks for specific platforms:
+
+| Keyword | query_domains |
+|---------|--------------|
+| "на реддите", "reddit" | `["reddit.com"]` |
+| "на твиттере", "в X" | `["twitter.com", "x.com", "nitter.net"]` |
+| "на гитхабе" | `["github.com"]` |
+| "на пабмеде", "pubmed" | `["pubmed.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov"]` |
+| "научные статьи" | `["pubmed.ncbi.nlm.nih.gov", "scholar.google.com", "arxiv.org", "nature.com"]` |
+| "крипто", "DeFi" | `["defillama.com", "dune.com", "messari.io", "theblock.co", "coingecko.com"]` |
+| "новости" | `["reuters.com", "bloomberg.com", "techcrunch.com"]` |
+
+**"в основном X"** = use query_domains BUT add 1-2 broad domains to catch important results outside the primary source.
+
+### 4. Specialized Retrievers
+
+GPT Researcher has built-in retrievers for specific source types. Use when the topic matches:
+
+| Keyword | retrievers value | API key needed? |
+|---------|-----------------|----------------|
+| "научные статьи", "academic", "arxiv" | `tavily,arxiv` | No (arxiv free) |
+| "медицина", "БАДы", "пабмед", "health" | `tavily,pubmed_central` | No (PubMed free) |
+| "академические работы", "semantic scholar" | `tavily,semantic_scholar` | No (free) |
+| "научный ресёрч" (broad) | `tavily,arxiv,pubmed_central,semantic_scholar` | No |
+| default (anything else) | Don't set (uses .env default = tavily) | — |
+
+**IMPORTANT:** Always include `tavily` (or `serper` if tavily quota exhausted) alongside specialized retrievers. They complement each other — Tavily finds web content, specialized retrievers find academic/domain sources.
+
+**Available retrievers:** `tavily`, `serper`, `duckduckgo`, `arxiv`, `pubmed_central`, `semantic_scholar`, `exa`, `bing`, `google`, `searchapi`, `serpapi`, `searx`
+
+### 5. Specific URLs
+
+User can provide URLs directly:
+- "проанализируй эту статью: https://..." → `source_urls: ["https://..."]`
+
+---
+
+## Combining Dimensions — Examples
+
+| User request | Parameters |
+|-------------|-----------|
+| "ресёрч про магний для сна, ищи на пабмеде, 50 источников" | `report_type: research_report, retrievers: "tavily,pubmed_central", query_domains: ["pubmed.ncbi.nlm.nih.gov"], max_urls_to_scrape: 50` |
+| "быстрый обзор что на реддите думают про Solana" | `report_type: research_report, query_domains: ["reddit.com"], total_words: 1000, max_search_results: 3` |
+| "глубокий научный ресёрч про longevity" | `report_type: detailed_report, retrievers: "tavily,arxiv,pubmed_central,semantic_scholar", total_words: 5000` |
+| "что на гитхабе нового по AI agents" | `report_type: research_report, query_domains: ["github.com"]` |
+| "детальный ресёрч Hyperliquid vs dYdX, 30 источников" | `report_type: detailed_report, max_urls_to_scrape: 30` |
+
+---
+
+## Preset Parameters
+
+**Quick:** ~1000 слов, 3-4 мин
+```json
+{"report_type": "research_report", "total_words": 1000, "max_search_results": 3, "max_subtopics": 1}
+```
+
+**Standard:** ~2500 слов, 6-8 мин — DEFAULT
+```json
+{"report_type": "research_report"}
+```
+
+**Deep:** ~5000+ слов, 15-25 мин
+```json
+{"report_type": "detailed_report", "total_words": 5000, "max_search_results": 8, "max_subtopics": 5}
+```
+
+**Sources:** список с описанием, 4-5 мин
+```json
+{"report_type": "resource_report"}
+```
+
+---
+
+## API Reference
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/report/ \
   -H "Content-Type: application/json" \
   -d '{
-    "task": "Your research query here",
+    "task": "Research query",
     "report_type": "research_report",
-    "report_source": "web",
-    "tone": "Objective",
-    "repo_name": "",
-    "branch_name": "",
-    "generate_in_background": false
-  }' | python3 -m json.tool
+    "tone": "Analytical",
+    "retrievers": "tavily,pubmed_central",
+    "query_domains": ["reddit.com"],
+    "max_urls_to_scrape": 50
+  }' --max-time 900
 ```
 
-### Parameters
+### All Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `task` | string | **required** | Research query/topic |
-| `report_type` | string | `research_report` | See Report Types below |
-| `report_source` | string | **required** | `web` or `local` (local docs) |
-| `tone` | string | **required** | `Objective`, `Formal`, `Analytical`, `Persuasive`, `Informative`, `Explanatory` (capital first letter!) |
-| `repo_name` | string | **required** | GitHub repo (empty string `""` for web research) |
-| `branch_name` | string | **required** | Git branch (empty string `""` for web research) |
-| `generate_in_background` | bool | `true` | **Set to `false`** for synchronous response! |
-| `source_urls` | list | `[]` | Specific URLs to research |
-| `headers` | dict | `null` | Custom HTTP headers |
+| `report_type` | string | `research_report` | `research_report`, `detailed_report`, `resource_report`, `outline_report` |
+| `report_source` | string | `web` | `web` or `local` |
+| `tone` | string | `Analytical` | `Objective`, `Formal`, `Analytical`, `Persuasive`, `Informative`, `Explanatory` (**capitalized!**) |
+| `source_urls` | list | `null` | Specific URLs to analyze |
+| `query_domains` | list | `null` | Restrict search to these domains |
+| `retrievers` | string | `null` | Comma-separated retrievers: `"tavily,arxiv,pubmed_central"` |
+| `max_search_results` | int | 5 | Search results per sub-query (3-15) |
+| `max_subtopics` | int | 3 | Sub-questions to explore (1-10) |
+| `max_urls_to_scrape` | int | 12 | Max pages to download and read (5-100) |
+| `total_words` | int | 2500 | Target word count |
 
-**⚠️ IMPORTANT:** `generate_in_background` defaults to `true`. Always set it to `false` for synchronous API calls.
+---
 
-### Report Types
+## After EVERY Research — MUST DO
 
-- **`research_report`** — standard report (~1400 words), good balance of speed/depth
-- **`detailed_report`** — comprehensive deep-dive with subtopics, slower but thorough
-- **`resource_report`** — curated list of sources with summaries
-- **`outline_report`** — structured outline with key points
-- **`subtopic_report`** — focused on a specific subtopic
+### 1. Show Statistics
+```
+📊 Статистика:
+• Источников: X
+• Посещено URL: Y
+• Время: ~N мин
+• Retrievers: tavily, arxiv
+• Топ-5 источников: [list with titles]
+```
 
-## Deep Research (recursive, high depth)
-
-For complex topics requiring tree-like exploration:
-
+### 2. Publish to GitHub
 ```bash
-curl -s -X POST http://127.0.0.1:8000/report/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": "Comprehensive analysis of DeFi yield strategies in 2026",
-    "report_type": "detailed_report",
-    "agent": "researcher"
-  }' | python3 -m json.tool
+SLUG="topic-name"
+DATE=$(date +%Y-%m-%d)
+cd /tmp/research && git pull --rebase 2>/dev/null
+cat > "reports/${DATE}-${SLUG}.md" << 'REPORT'
+<markdown report>
+REPORT
+git add reports/ && git commit -m "research: ${SLUG}" && git push
 ```
 
-Deep research parameters are configured in `.env`:
-- `DEEP_RESEARCH_BREADTH=3` — parallel research paths
-- `DEEP_RESEARCH_DEPTH=2` — sequential search iterations
-- `DEEP_RESEARCH_CONCURRENCY=4` — concurrent operations
+### 3. Send to User
+- GitHub link: `https://github.com/aerbaser/research/blob/main/reports/YYYY-MM-DD-slug.md`
+- Key findings (3-5 bullet points)
+- Stats
 
-## Research on Specific URLs
+**Repo:** https://github.com/aerbaser/research
 
-```bash
-curl -s -X POST http://127.0.0.1:8000/report/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": "Summarize the key findings",
-    "report_type": "research_report",
-    "source_urls": ["https://example.com/article1", "https://example.com/article2"]
-  }' | python3 -m json.tool
-```
+---
 
-## Background Research
+## How Depth Works
 
-For long-running research, use background mode:
+| Parameter | What it controls | Effect on time |
+|-----------|-----------------|---------------|
+| `max_subtopics` | LLM splits topic into N sub-questions | +30s per subtopic |
+| `max_search_results` | Results fetched per sub-question per retriever | +5s per result |
+| `max_urls_to_scrape` | Pages actually downloaded and read | +10s per page |
+| `retrievers` | Which search backends to query | +20s per extra retriever |
+| `detailed_report` | Tree exploration: breadth×depth iterations | 2-3x longer |
+| `CURATE_SOURCES` | LLM filters weak sources (uses gpt-5.4-mini) | +30s |
 
-```bash
-# Start research in background
-RESULT=$(curl -s -X POST http://127.0.0.1:8000/report/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": "Your query",
-    "report_type": "detailed_report",
-    "generate_in_background": true
-  }')
+**Time estimates:**
+- Quick (1 subtopic, 3 results, 5 pages): ~3-4 min
+- Standard (3 subtopics, 5 results, 12 pages): ~6-8 min
+- Deep detailed (5 subtopics, 8 results, 50 pages): ~15-25 min
+- Max (10 subtopics, 15 results, 100 pages): ~30-45 min
 
-RESEARCH_ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['research_id'])")
+## Cost
 
-# Check result later
-curl -s http://127.0.0.1:8000/api/reports/$RESEARCH_ID | python3 -m json.tool
-```
+All LLM calls via ChatGPT Pro = **$0**. Tavily: 1000 req/mo free. ArXiv/PubMed/SemanticScholar: **free**. Serper: 2500 free then $2.50/1000. Embeddings: local = **free**.
 
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/report/` | Generate research report |
-| `GET` | `/api/reports` | List all reports |
-| `GET` | `/api/reports/{id}` | Get specific report |
-| `POST` | `/api/chat` | Chat with research context |
-| `POST` | `/api/multi_agents` | Run multi-agent research |
-| `GET` | `/` | Web UI |
-
-## Response Format
-
-```json
-{
-  "research_id": "task_1710000000_your_query",
-  "research_information": {
-    "source_urls": ["https://source1.com", "https://source2.com"]
-  },
-  "report": "# Research Report\n\n## Introduction\n...",
-  "docx_path": "outputs/task_xxx.docx",
-  "pdf_path": "outputs/task_xxx.pdf"
-}
-```
-
-The `report` field contains the full markdown report with inline citations.
-Reports are also saved as .docx/.pdf in the `outputs/` directory.
+When Tavily quota exhausted → change RETRIEVER in .env from `tavily` to `serper` (SERPER_API_KEY already configured).
 
 ## Troubleshooting
 
 ```bash
-# Check services
 systemctl --user status codex-proxy gpt-researcher
-
-# Test codex-proxy health
-curl -s http://127.0.0.1:8016/health
-
-# Test GPT Researcher
-curl -s http://127.0.0.1:8000/ | head -5
-
-# Restart if needed
-systemctl --user restart codex-proxy gpt-researcher
-
-# Logs
 journalctl --user -u gpt-researcher -n 50 --no-pager
-journalctl --user -u codex-proxy -n 50 --no-pager
+systemctl --user restart codex-proxy gpt-researcher
 ```
-
-## Configuration
-
-Config file: `/home/aiadmin/.openclaw/workspace-aristotle/projects/gpt-researcher/.env`
-
-Key settings:
-- LLMs: `FAST_LLM`, `SMART_LLM`, `STRATEGIC_LLM` — via codex-proxy (gpt-5.4)
-- Search: `RETRIEVER=duckduckgo` (free, no key)
-- Embeddings: `huggingface:sentence-transformers/all-MiniLM-L6-v2` (local)
-- Language: `LANGUAGE=russian`
-- Words: `TOTAL_WORDS=1400`
-
-## Cost
-
-All LLM calls go through Codex CLI → ChatGPT Pro subscription = **$0 marginal cost**.
-Search via DuckDuckGo = **free**.
-Embeddings via local HuggingFace = **free**.
-
-## MCP (for ACP sessions)
-
-MCP server config at `~/.openclaw/workspace-aristotle/.mcp.json`.
-Available tools: `deep_research`, `quick_search`, `write_report`, `get_research_sources`, `get_research_context`.
-Used when spawning ACP sessions (Codex/Claude Code) in Aristotle's workspace.

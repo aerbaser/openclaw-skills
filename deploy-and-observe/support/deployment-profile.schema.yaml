@@ -1,0 +1,50 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: deployment profile schema
+type: object
+required:
+  - schema_version
+  - profile_name
+  - environment_class
+  - deploy_primitive
+  - rollback_primitive
+  - default_promotion_path
+  - release_unit
+  - rollback_unit
+  - health_sources
+  - smoke_categories
+properties:
+  schema_version:
+    type: string
+  profile_name:
+    type: string
+  environment_class:
+    type: string
+  deploy_primitive:
+    type: string
+  rollback_primitive:
+    type: string
+  default_promotion_path:
+    type: array
+    items:
+      type: string
+      enum: [preview, staging, prod]
+    minItems: 2
+  staging_supported:
+    type: boolean
+  release_unit:
+    type: string
+  rollback_unit:
+    type: string
+  health_sources:
+    type: array
+    items:
+      type: string
+    minItems: 1
+  smoke_categories:
+    type: array
+    items:
+      type: string
+    minItems: 1
+  notes:
+    type: string
+additionalProperties: true

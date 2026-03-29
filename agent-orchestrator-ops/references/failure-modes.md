@@ -1,82 +1,108 @@
-# Failure Modes
+# Failure Modes (v0.2.2)
 
-## 1) Stale dashboard on wrong port
+## 1. Stale Dashboard
 
-### Symptom
-- dashboard shows empty sessions / no orchestrator
-- `ao status` still shows active workers
+**Symptom:** Dashboard empty / "no orchestrator" — but `ao status` shows active sessions
+**Rule:** Trust `ao status` + runtime over dashboard UI
+**Fix:** Restart dashboard (full 3-process stack). Don't kill sessions based on UI alone.
 
-### Diagnosis
-- compare `ao status` with `/api/sessions`
-- check configured port in `agent-orchestrator.yaml`
-- check listeners on `3000/3001/14800/14801`
+## 2. EADDRINUSE on :3100
 
-### Rule
-Trust CLI/runtime over dashboard.
+**Symptom:** `ao start` or `pnpm dev` fails with EADDRINUSE
+**Check:**
+```bash
+ss -tlnp | grep 3100
+lsof -i:3100 -P -n
+```
+**Tailscale cause:** Tailscale serve binds `100.x.x.x:3100` + `[fd7a:]:3100`, conflicts with `:::3100`
+**Fix:** Start next dev with `-H 127.0.0.1` (manual start) or set `HOSTNAME=127.0.0.1` env
+**Other cause:** Old dashboard still running → `pkill -f 'next.*3100'`
 
-## 2) Duplicate dashboard stacks / EADDRINUSE
+## 3. Terminal WebSocket Error
 
-### Symptom
-- repeated `EADDRINUSE` on 3000/3001/14800/14801
-- restarting one stack seems to respawn another
+**Symptom:** DirectTerminal in dashboard shows WebSocket error
+**Check:** `ss -tlnp | grep 14801` — is direct-terminal-ws listening?
+**Cause:** Dashboard started via `ao dashboard` (only starts next, not WS servers) or via bare `next dev`
+**Fix:** Full 3-process start:
+```bash
+cd /home/aiadmin/tools/agent-orchestrator/packages/web
+DIRECT_TERMINAL_PORT=14801 nohup npx concurrently \
+  "npx next dev -p 3100 -H 127.0.0.1" \
+  "npx tsx watch server/terminal-websocket.ts" \
+  "DIRECT_TERMINAL_PORT=14801 npx tsx watch server/direct-terminal-ws.ts" \
+  --names "next,terminal,direct-terminal" > /tmp/ao-dash-full.log 2>&1 &
+```
 
-### Diagnosis
-- inspect parent process tree
-- look for `npm run dev`, `concurrently`, LaunchAgents, detached shells
-- on Dors Mac a stale LaunchAgent existed:
-  - `~/Library/LaunchAgents/local.ao-dashboard.plist`
+## 4. False "Session Stopped"
 
-### Fix
-- kill the duplicate process tree
-- unload the stale LaunchAgent if present
-- leave one canonical stack only
+**Reality:** Agent finishes a turn and waits — that is NOT a crash. "stuck"/"needs_input" is the idle state.
+**Check:**
+```bash
+tmux ls                          # session still exists?
+ao status                        # still registered?
+ps aux | grep claude             # process alive?
+```
+**Probe before killing:**
+```bash
+ao send <session-id> "Report current status"
+```
 
-## 3) False “orchestrator stopped”
+## 5. Merged Session Still Active
 
-### Symptom
-- UI looks idle/stale
-- human thinks orchestrator stopped
+**Check:** `gh pr view <number>` — confirm merged in GitHub first
+**Fix:** `ao session cleanup -p <project>` (use `--dry-run` first)
 
-### Reality
-Codex/Claude orchestrator can finish a turn and wait. That is not a crash.
+## 6. Ghost Sessions After Service Restart
 
-### Check
-- tmux session exists
-- `ao status` returns active sessions
-- lifecycle worker exists
+**Symptom:** `ao status` shows sessions as "unknown", tmux sessions gone
+**Fix:**
+```bash
+ao session cleanup -p <project>
+ao start <project> --no-dashboard   # restart orchestrator + lifecycle
+```
 
-## 4) Merged session still active in dashboard
+## 7. Lifecycle Worker Dead
 
-### Symptom
-- merged PR session still appears as active/working
+**Check:** `ps aux | grep lifecycle-worker`
+**Fix:** `ao stop <project> && ao start <project> --no-dashboard`
+Or manual: `ao lifecycle-worker <project> --interval-ms 30000 &`
 
-### Check
-- GitHub PR state
-- local session metadata
-- `ao session cleanup -p <project>` eligibility
+## 8. Session Stuck for >10 Minutes
 
-### Fix
-Run cleanup only after verifying terminal reality.
+**Check:** `ao send <session-id> "Report current status"`
+**If no response in 5min:** `ao session kill <session-id>` → `ao spawn <issue>`
+**Escalate** if respawn doesn't help.
 
-## 5) Wrong lifecycle command from stale memory
+## 9. Wrong Subcommand Name
 
-### Symptom
-- operator says lifecycle is missing
-- command errors with `unknown command`
+**Cause:** Names change across versions
+**Fix:** Always `ao --help` first
 
-### Cause
-AO build changed subcommand names.
+## 10. "No config found"
 
-### Fix
-Run `ao --help` first. On current Dors build use `ao lifecycle-worker ...`.
+**Fix:** `cd /home/aiadmin/tools/agent-orchestrator && ao status`
 
-## 6) Dashboard API disagrees with CLI
+## 11. Duplicate Dashboard Stacks
 
-### Rule
-If these disagree:
-- `ao status`
-- tmux/process state
-- GitHub PR/issue state
-- dashboard API/UI
+**Symptom:** Multiple next/tsx processes on same ports
+**Check:**
+```bash
+ps aux | grep -E 'next.*3100|tsx.*terminal|concurrently' | grep -v grep
+```
+**Fix:** Kill all, start single stack:
+```bash
+pkill -f 'next.*dev.*3100'
+pkill -f 'tsx.*terminal'
+pkill -f 'concurrently.*agent-orchestrator'
+# Then restart
+```
 
-Treat dashboard as suspect until reconciled.
+## 12. Notifier Auth Failure (401)
+
+**Symptom:** `[notifier-openclaw] rejected the auth token (HTTP 401)`
+**Fix:** Check token in `agent-orchestrator.yaml` matches OpenClaw config:
+```bash
+grep token agent-orchestrator.yaml
+cat ~/.openclaw/openclaw.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('hooks',{}).get('token','NOT SET'))"
+```
+Reconfigure: `ao setup openclaw`

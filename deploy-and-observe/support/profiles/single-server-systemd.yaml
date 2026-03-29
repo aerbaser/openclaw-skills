@@ -1,0 +1,21 @@
+schema_version: '1.0'
+profile_name: single-server-systemd
+environment_class: single_server
+deploy_primitive: systemd_unit_or_symlink_switch
+rollback_primitive: previous_artifact_or_previous_unit_target
+default_promotion_path:
+- preview
+- prod
+staging_supported: false
+release_unit: service_unit
+rollback_unit: artifact_or_unit_target
+health_sources:
+- systemctl state
+- health endpoint
+- process restart count
+smoke_categories:
+- reachability
+- version
+- critical path
+- dependency sanity
+notes: Default profile for current single-server/Tailscale-oriented setup.

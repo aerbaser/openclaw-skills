@@ -1,0 +1,13 @@
+# project override example
+schema_version: '1.0'
+profile_name: single-server-systemd
+project_name: example-app
+release_unit_name: example-app.service
+health_endpoints:
+  - http://127.0.0.1:3000/health
+critical_path_checks:
+  - curl -fsS http://127.0.0.1:3000/health
+  - curl -fsS http://127.0.0.1:3000/version | grep "$EXPECTED_VERSION"
+observe_window_minutes: 10
+staging_enabled: false
+rollback_target_hint: previous_release_symlink

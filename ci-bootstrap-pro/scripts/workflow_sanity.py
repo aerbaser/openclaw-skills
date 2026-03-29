@@ -60,7 +60,7 @@ def audit_workflow(path: Path) -> Dict[str, object]:
         pull_request_target = "pull_request_target" in on_value
 
     if permissions is None:
-        warnings.append("Missing top-level permissions.")
+        errors.append("Missing top-level `permissions`. Add at minimum: permissions: contents: read")
     elif permissions == "write-all":
         errors.append("permissions: write-all is too broad.")
     elif isinstance(permissions, dict):
@@ -69,7 +69,7 @@ def audit_workflow(path: Path) -> Dict[str, object]:
                 warnings.append(f"Top-level permission '{key}: {value}' is write-capable; confirm it is required.")
 
     if concurrency is None:
-        warnings.append("Missing top-level concurrency.")
+        errors.append("Missing top-level `concurrency`. Add: group: ci-${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true")
     elif isinstance(concurrency, dict) and not concurrency.get("cancel-in-progress"):
         warnings.append("Concurrency exists but does not cancel stale runs.")
 

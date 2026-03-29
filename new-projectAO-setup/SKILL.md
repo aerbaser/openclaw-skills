@@ -37,6 +37,12 @@ Before running this skill, you need:
 git clone https://github.com/<owner>/<repo>.git <local_path>
 ```
 
+### 1.5. Generate CI from actual stack
+
+Read and follow the `ci-bootstrap-pro` skill for this repo.
+CI must be generated from the real stack (package.json, Makefile, pyproject.toml, etc.) — not from boilerplate.
+CI must exist and be pushed **before** `.agent-rules.md` and webhook setup.
+
 ### 2. Create `.agent-rules.md` in the repo
 
 Template:

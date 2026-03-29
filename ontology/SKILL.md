@@ -230,3 +230,106 @@ python3 scripts/ontology.py list --type Person
 ## Instruction Scope
 
 Runtime instructions operate on local files (`memory/ontology/graph.jsonl` and `memory/ontology/schema.yaml`) and provide CLI usage for create/query/relate/validate; this is within scope. The skill reads/writes workspace files and will create the `memory/ontology` directory when used. Validation includes property/enum/forbidden checks, relation type/cardinality validation, acyclicity for relations marked `acyclic: true`, and Event `end >= start` checks; other higher-level constraints may still be documentation-only unless implemented in code.
+
+---
+
+## Pipeline v8.2 Canonical Vocabulary
+
+> These enums are the authoritative vocabulary for all pipeline agents.
+> Agents must use these values verbatim in contract.json, status.json, and events.ndjson.
+> Any new route, gate, or outcome type must be added here before production use.
+
+### Routes
+- `artifact_route` — strategy doc, research, design pack, audit — no repo needed
+- `build_route` — new app, new feature, repo-based implementation
+- `diagnostic_route` — debug, root cause, performance analysis
+- `publish_route` — blog post, Twitter thread, content publication
+- `ops_route` — infra, deploy, service management
+- `incident_route` — live incident, rollback, emergency fix
+- `hybrid_route` — strategy + build, design + publish
+
+### Outcome Types
+- `strategy_doc` — research, analysis, strategic recommendation
+- `design_pack` — UX/UI, system design, architecture
+- `website_release` — website or landing page
+- `app_release` — web/mobile app, service, API
+- `bugfix_release` — bug fix or hotfix
+- `audit_pack` — code audit, security review
+- `publish_asset` — blog post, thread, content
+- `ops_change` — infra change, service config
+- `incident_recovery` — live incident resolution
+
+### Delivery Modes
+- `artifact_only` — research, docs, designs — no repo
+- `repo_build` — code that lives in a repo
+- `hybrid` — artifact + repo (design pack + implementation)
+- `diagnostic` — analysis output, no deployable artifact
+- `publish` — content destined for external publication
+- `ops_only` — operational change, no code artifact
+
+### Task States (v8.2 canonical)
+- `INTAKE CONTEXT RESEARCH DESIGN PLANNING SETUP EXECUTION REVIEW_PENDING CI_PENDING QUALITY_GATE FINALIZING DEPLOYING OBSERVING DONE` — primary pipeline
+- Terminal: `DONE FAILED SUPERSEDED CANCELLED`
+- Extended: `BLOCKED WAITING_USER WAITING_AGENT CONTRACT_LOCKED IN_REWORK STUCK ROLLING_BACK`
+
+### Required Gates by Route
+- `build_route`: context-assimilation, code-review-gate, CI, finalize-outcome
+- `artifact_route`: context-assimilation, artifact-quality-gate, finalize-outcome
+- `publish_route`: artifact-quality-gate, finalize-outcome
+- `ops_route`: decision-gate, finalize-outcome
+- `incident_route`: decision-gate, finalize-outcome
+- `hybrid_route`: context-assimilation, artifact-quality-gate, code-review-gate, finalize-outcome
+
+### Approval Policies
+- `delegated_timeout` — Sokrat decides after TTL (default)
+- `explicit` — requires human confirmation
+- `mixed` — explicit for destructive, delegated for reversible
+
+### Gate Types (decision-gate)
+- `approval` — TTL 1h, fallback: proceed conservative
+- `deploy` — TTL 30min, fallback: hold
+- `publish` — TTL 2h, fallback: hold
+- `destructive` — TTL 15min, fallback: abort
+- `scope_lock` — TTL 24h, fallback: proceed original scope
+
+### Resolution Modes (decision-log)
+- `delegated_timeout` — timer expired, Sokrat decided
+- `user` — user replied explicitly
+- `operator_override` — system rule applied
+- `abort` — action aborted (destructive + no reply)
+
+### Proof / Evidence Types (DONE gate)
+- `url` — live URL accessible
+- `test_pass` — CI/test suite green
+- `artifact_file` — file exists and is valid
+- `smoke_pass` — smoke test passed
+- `review_approved` — code review approved
+- `deploy_confirmed` — deployment confirmed active
+
+### Risk Levels (issue contracts, decision gates)
+- `low` — reversible, no user impact, internal tooling
+- `medium` — limited blast radius, rollback possible within minutes
+- `high` — user-facing impact, requires review gate
+- `critical` — irreversible or money/security/data-loss risk, requires explicit approval
+
+### Review Finding Severities (code-review-gate)
+- `critical` — correctness bug, security issue, contract violation, data loss risk → blocks merge
+- `major` — missing test, unsafe shortcut, non-trivial regression risk → blocks merge
+- `minor` — style, maintainability, sub-optimal but functional, cosmetic → does not block
+
+### Blocker Categories
+- `missing_context` — need more info from user
+- `waiting_agent` — delegated agent hasn't responded
+- `external_dep` — third-party API/service unavailable
+- `ci_failure` — CI broken
+- `review_requested` — review pending
+- `approval_timeout` — user hasn't responded to gate
+
+### Synonyms → Canonical
+- "strategy only" / "just research" / "analyse X" → `artifact_route` / `strategy_doc`
+- "build X" / "make X" / "create X" / "implement" → `build_route` / `app_release`
+- "fix bug" / "this is broken" / "hotfix" → `build_route` / `bugfix_release`
+- "design" / "mockup" / "wireframe" / "UX" → `artifact_route` / `design_pack`
+- "post about" / "write thread" / "publish" → `publish_route` / `publish_asset`
+- "set up server" / "deploy" / "infra" → `ops_route` / `ops_change`
+- "incident" / "down" / "rollback" → `incident_route` / `incident_recovery`

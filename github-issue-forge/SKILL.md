@@ -174,3 +174,118 @@ If repo scan is incomplete:
 If GitHub overlap search is unavailable:
 - still draft the issue,
 - note that duplicate search could not be confirmed.
+
+---
+
+## AO Pipeline v8.2 Extension
+
+> This section adds AO-specific requirements on top of the base workflow above.
+> When creating issues for AO execution (task_id present), apply ALL of these.
+
+### Issue Contract Schema (AO-ready issue)
+
+Every AO issue body must include these sections in order:
+
+```markdown
+## Summary
+[1-2 sentences, outcome-focused]
+
+## Problem / Context
+[current state, why this matters]
+
+## Desired Outcome
+[concrete, measurable end state]
+
+## Acceptance Criteria
+- [ ] Criterion 1 (testable, specific)
+- [ ] Criterion 2
+- [ ] Criterion 3
+
+## Verification Plan
+Steps for the executing agent to verify completion:
+1. `<exact command to run>`
+2. Expected: `<what success looks like>`
+3. Smoke test: `<URL or command>`
+
+## Affected Areas
+- `path/to/file.ts` — reason
+- `path/to/other.ts` — reason
+
+## Dependencies
+- Blocked by: #<issue> (if any)
+- Depends on: task_id `tsk_...` (if applicable)
+
+## Non-Goals
+- Not doing X in this issue
+- Out of scope: Y
+
+## Reviewer Handoff
+After implementation, reviewer should check:
+1. [specific thing to verify]
+2. [second check]
+
+## Rollback / Blast Radius
+[only if relevant — what breaks if this goes wrong, how to revert]
+
+## Constraints / Notes
+- Stack: [exact tech]
+- Do not change: [boundaries]
+- Assumption: [anything unverified]
+
+## task_id / contract_hash
+- task_id: `tsk_...`
+- contract_hash: [sha256 of contract.json, if available]
+```
+
+### Route type in issue
+Include the task route in issue metadata (label or body):
+- `route: build_route` / `artifact_route` / `diagnostic_route` / `publish_route` / `ops_route` / `incident_route` / `hybrid_route`
+
+### GitHub Issue Types / Forms / Fields mapping
+When the target repo has Issue Types enabled, set `type`:
+- `Bug` for bugfix_release
+- `Feature` for app_release, website_release
+- `Task` for ops_change, strategy_doc, design_pack, audit_pack
+- `Documentation` for publish_asset
+
+When the repo has Issue Forms (`.github/ISSUE_TEMPLATE/*.yml`), use the matching form template. If no form exists, the AO Issue Contract Schema above serves as the body.
+
+When the repo has custom Issue Fields (via Projects v2), populate:
+- `Priority`: from contract approval_policy (delegated_timeout=medium, explicit=high)
+- `Status`: from task state
+- `Sprint`/`Milestone`: from contract if specified
+
+### Validation rules (AO-specific, in addition to base linter)
+
+An issue is **invalid** if any of these are missing:
+- `Acceptance Criteria` with ≥1 testable checkbox
+- `Verification Plan` with ≥1 concrete command
+- `Affected Areas` with exact file paths
+- `Non-Goals` (even if "none in this issue")
+
+An issue is **invalid** if:
+- Acceptance criteria are vague ("works correctly", "is fast")
+- Verification plan has no runnable commands
+- Scope covers work that could not merge independently
+
+### One mergeable slice rule
+One GitHub issue = one independently mergeable unit of work.
+- Discovery tasks and implementation tasks must be separate issues
+- Migration + cleanup can be one issue only if they deploy together
+- When in doubt: split
+
+### Mapping to task ledger
+When creating issues for a known task:
+1. Include `task_id` in issue body
+2. After `gh issue create`, write issue URL to task events:
+```bash
+node ~/clawd/scripts/task-store.js event <task_id> ISSUE_CREATED \
+  '{"issue_url":"https://github.com/org/repo/issues/N","actor":"platon"}'
+```
+
+### contract_hash propagation
+When a contract.json exists:
+```bash
+CONTRACT_HASH=$(sha256sum ~/clawd/tasks/<task_id>/contract.json | awk '{print $1}')
+```
+Include in issue body under `## task_id / contract_hash`.

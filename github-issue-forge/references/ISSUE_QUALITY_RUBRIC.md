@@ -34,6 +34,13 @@ Inferred facts look like confirmed facts.
 
 ### W2. Related work not linked
 Adjacent issues or PRs are mentioned vaguely or not at all.
+Overlap check (`gh issue list --search`) must be documented in "Related Context", even if result is "no overlap".
+
+### W5. Tests Required missing
+Issue does not state what tests to add/update or explicitly justify why none needed.
+
+### W6. Layout Constraints missing (frontend tasks only)
+For UI/CSS/responsive issues: no flex/grid rules, no breakpoints, no overflow/truncation constraints specified. Worker will guess → multiple review cycles.
 
 ### W3. Non-goals are weak
 The worker could still sprawl into adjacent cleanup.

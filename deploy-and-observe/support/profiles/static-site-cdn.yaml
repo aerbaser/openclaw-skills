@@ -1,0 +1,22 @@
+schema_version: '1.0'
+profile_name: static-site-cdn
+environment_class: static_publish
+deploy_primitive: artifact_publish_and_alias_or_invalidation
+rollback_primitive: previous_site_version_or_alias_repoint
+default_promotion_path:
+- preview
+- prod
+staging_supported: true
+release_unit: site_build_or_version
+rollback_unit: site_version_or_alias
+health_sources:
+- preview URL
+- production URL
+- cache propagation status
+smoke_categories:
+- reachability
+- version
+- critical path
+- link integrity
+- basic performance
+notes: Use for landings, docs, marketing sites, static app shells.

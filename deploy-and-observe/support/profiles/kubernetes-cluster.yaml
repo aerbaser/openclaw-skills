@@ -1,0 +1,24 @@
+schema_version: '1.0'
+profile_name: kubernetes-cluster
+environment_class: k8s_cluster
+deploy_primitive: rollout_apply_or_upgrade
+rollback_primitive: rollout_undo_or_previous_revision
+default_promotion_path:
+- preview
+- staging
+- prod
+staging_supported: true
+release_unit: deployment_statefulset_or_chart
+rollback_unit: revision
+health_sources:
+- rollout status
+- pod health
+- service health
+- metrics
+smoke_categories:
+- reachability
+- version
+- critical path
+- dependency sanity
+- replica stability
+notes: Use when the release object has native revision history and rollout semantics.

@@ -1,55 +1,56 @@
 # Delivery Protocol
 
-## User-visible status
+## Report to Сократ
 
-For user-impact code / merge / deploy tasks, send short visible updates:
-- topic:20 — operational Dors lane
-- topic:13 — user-visible summary lane
-
-Keep each update to 1–3 lines:
-1. what changed
-2. status: PASS / FAIL / BLOCKED / IN_PROGRESS
-3. next step (if any)
-
-## Minimum moments to send
-
-### Start
-- acknowledge the task
-- name the current blocker or objective
-- include ETA
-
-### Merge
-- PR merged
-- whether deploy is next or already done
-
-### Deploy
-- deployed SHA / PR
-- PASS / FAIL / BLOCKED
-- next verification step
-
-### Verification
-- final state
-- if blocked, only the dominant blocker
-
-## Post-merge / post-deploy notify runbook
-
-If automation is not yet implemented:
-- send manual status immediately after merge
-- send manual status immediately after deploy
-- send final verify result
-
-If automation exists later, keep manual fallback when automation is degraded.
-
-## Good examples
-
-```text
-PR #730 merged and deployed. PASS. Rechecking runtime health now.
+Use `sessions_send`:
+```
+sessions_send(sessionKey="agent:main:telegram:group:-1003692383088:topic:121", message="...")
 ```
 
-```text
-Binance spot loader fix in work. BLOCKED by spot→fapi misroute. ETA 45m.
+## Report to Юра
+
+Use `message` tool with Archimedes account:
+```
+message(action=send, accountId=archimedes, channel=telegram, target=-1003692383088, threadId=122, message="...", buttons=[])
 ```
 
-```text
-SPEC-0017 deployed and verified. PASS. No next step.
+> ⚠️ Always include `buttons=[]` — message tool requires it.
+> ⚠️ threadId=122 is Архимед's topic. Don't post to 121 (Сократ's topic).
+
+## Format
+
+1–3 lines max:
+1. What changed
+2. Status: `PASS` / `FAIL` / `BLOCKED` / `IN_PROGRESS`
+3. Next step
+
+## Mandatory Report Moments
+
+| Moment | Include |
+|--------|---------|
+| Task ACK | Acknowledge + objective (within 60s) |
+| Orchestrator start/stop | Service + PASS/FAIL + verification |
+| Session spawned | Issue # + session name |
+| PR opened | PR URL + summary |
+| PR merged | PR # + next step |
+| Dashboard restart | Ports + verification result |
+| AO update | Old version → new version + status |
+| Blocked | Single dominant blocker |
+
+## Examples
+
+```
+AO updated 0.1.0 → 0.2.2. Local patch rebased. Both orchestrators running. Dashboard :3100 + WS :14800/:14801. PASS.
+```
+```
+aodash-orchestrator restarted. Claude Code session active. Dashboard API responding. PASS.
+```
+```
+Spawned aodash-8 for issue #99. Session active in tmux. IN_PROGRESS.
+```
+```
+PR #100 merged (fix/restore-kanban). Dashboard restarted. Pipeline page loads 3 tasks. PASS.
+```
+```
+BLOCKED: ao session amber-shore not responding after 5min. Killing and respawning.
 ```

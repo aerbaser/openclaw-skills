@@ -1,0 +1,21 @@
+schema_version: '1.0'
+profile_name: single-host-docker-compose
+environment_class: single_host_compose
+deploy_primitive: compose_pull_and_recreate
+rollback_primitive: previous_image_tag_or_previous_compose_state
+default_promotion_path:
+- preview
+- prod
+staging_supported: true
+release_unit: compose_service_or_stack
+rollback_unit: image_tag_or_compose_revision
+health_sources:
+- container status
+- health endpoint
+- restart count
+smoke_categories:
+- reachability
+- version
+- critical path
+- dependency sanity
+notes: Use for one-host containerized deployments.
